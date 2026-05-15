@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "harmonia-translate"
+version = "0.1.0"
+description = "Dual-validation translation pipeline with glossary governance. Pattern VII reference implementation of the Integral Knowledge Architecture methodology."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+authors = [
+    { name = "Harmonia", email = "harmonia@harmonism.io" }
+]
+keywords = [
+    "translation", "localization", "i18n", "glossary",
+    "doctrinal-fidelity", "harmonism", "harmonia",
+    "integral-knowledge-architecture"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Localization",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.0",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+deepl = ["httpx>=0.27"]
+groq = ["httpx>=0.27"]
+claude = ["anthropic>=0.40"]
+all = ["httpx>=0.27", "anthropic>=0.40"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/Harmonism/integral-knowledge-architecture"
+Documentation = "https://github.com/Harmonism/integral-knowledge-architecture/blob/main/components/translation/PIPELINE.md"
+Repository = "https://github.com/Harmonism/integral-knowledge-architecture"
+Issues = "https://github.com/Harmonism/integral-knowledge-architecture/issues"
+
+[project.scripts]
+harmonia-translate = "translate.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["translate"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]

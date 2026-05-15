@@ -1,0 +1,129 @@
+version: 2026.05
+language_primary: en
+entries:
+
+  # ── Native vocabulary ───────────────────────────────────────────────────
+  # Adopted as primary Harmonist register per concept-adoption discipline
+  # (Decisions #674, #676, #815).
+
+  - term: Logos
+    definition: "The inherent harmonic intelligence of the cosmos — the governing organizing principle of creation, the fractal living pattern that recurs at every scale."
+    adoption: native
+    source_tradition: greek
+    translations:
+      fr: Logos
+      es: Logos
+      ar: اللوغوس
+      pt: Logos
+      de: Logos
+      zh: 道
+      ja: ロゴス
+      hi: लोगोस
+      ru: Логос
+
+  - term: Dharma
+    definition: "Human alignment with Logos — the path of right action and purpose. Operates at all registers: physical, metaphysical, individual, civilizational."
+    adoption: native
+    source_tradition: indian
+    translations:
+      fr: Dharma
+      es: Dharma
+      ar: دارما
+      pt: Dharma
+      de: Dharma
+      zh: 法
+      ja: ダルマ
+      hi: धर्म
+      ru: Дхарма
+
+  - term: karma
+    definition: "The architecture of consequence — Logos returning the inner shape of every act across empirical and karmic registers. Decision #675 dual-register."
+    adoption: native
+    source_tradition: indian
+
+  # ── Tradition-specific (cross-tradition contexts) ───────────────────────
+
+  - term: Ṛta
+    definition: "Vedic cognate of Logos — cosmic rhythm. Tradition-specific; Logos leads in primary articulation per Decision #815."
+    adoption: tradition-specific
+    source_tradition: indian
+    deprecated: true
+
+  - term: Ayni
+    definition: "Sacred reciprocity — the fundamental ethical law of the Andean Q'ero tradition."
+    adoption: tradition-specific
+    source_tradition: shamanic-andean
+
+  - term: Munay
+    definition: "Love-will — the animating force of purpose in the Andean Q'ero tradition. Source of the name MunAI (the companion)."
+    adoption: tradition-specific
+    source_tradition: shamanic-andean
+
+  # ── Harmonism-internal architecture ─────────────────────────────────────
+
+  - term: Presence
+    definition: "The center of the Wheel of Harmony — the sovereign ground of being, the state of conscious awareness from which all pillars are engaged."
+    adoption: native
+
+  - term: Monitor
+    definition: "The center of the Wheel of Health — the fractal of Presence applied to the body. Sovereign self-observation."
+    adoption: native
+
+  - term: Stewardship
+    definition: "The center of the Wheel of Matter — right relationship with material substrate. The governing principle for technology in Harmonism."
+    adoption: native
+
+  - term: Wheel of Harmony
+    definition: "The individual blueprint — Presence at center plus seven pillars: Health, Matter, Service, Relationships, Learning, Nature, Recreation. Fractal 7+1 structure."
+    adoption: native
+
+  - term: Architecture of Harmony
+    definition: "The civilizational blueprint — Dharma at center plus eleven pillars (Decision #658). Tradition-neutral civilizational counterpart to the Wheel."
+    adoption: native
+
+  - term: Harmonic Realism
+    definition: "The metaphysical stance of Harmonism. Primary claim: reality is inherently harmonic — the Cosmos is pervaded by Logos."
+    adoption: native
+
+  - term: The Absolute
+    definition: "The metaphysical ground: Void + Manifestation = Infinity (0+1=∞). Harmonism's resolution of the One and the Many."
+    adoption: native
+
+  - term: Qualified Non-Dualism
+    definition: "Harmonism's position between pure monism and dualism: reality is ultimately One but expresses through genuine multiplicity."
+    adoption: native
+
+  - term: Three Treasures
+    definition: "The Jing-Qi-Shen framework integrated into Harmonism. Jing (essence/matter), Qi (energy/vitality), Shen (spirit/consciousness)."
+    adoption: tradition-specific
+    source_tradition: chinese
+
+  - term: Five Cartographies
+    definition: "Five tradition-clusters that mapped the anatomy of the soul: Indian, Chinese, Shamanic, Greek, Abrahamic. Peer primary, convergent witness."
+    adoption: native
+
+  - term: Harmonics
+    definition: "The living practice of Harmonism — the discipline of navigating the Wheel of Harmony in one's own life."
+    adoption: native
+
+  - term: Sovereignty
+    definition: "Self-governance, self-sufficiency, self-knowledge as the irreducible ground of human dignity. Alignment with Dharma, not libertarian individualism."
+    adoption: native
+
+  # ── Untranslatable proper nouns ─────────────────────────────────────────
+
+  - term: Harmonism
+    definition: "The philosophical system."
+    adoption: untranslatable
+
+  - term: Harmonia
+    definition: "The institution carrying Harmonism into civilizational form."
+    adoption: untranslatable
+
+  - term: MunAI
+    definition: "The Heart-register companion — the agent practitioners meet, named for Munay (Q'ero love-will)."
+    adoption: untranslatable
+
+  - term: HarmonAI
+    definition: "Harmonia's AI infrastructure layer — the engine beneath MunAI. Crown-register, Logos-facing."
+    adoption: untranslatable

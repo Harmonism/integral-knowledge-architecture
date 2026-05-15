@@ -1,0 +1,53 @@
+{
+  "artifact_id": "logos_en.mp3",
+  "artifact_format": "audio/mp3",
+  "source_id": "Philosophy/Doctrine/Logos.md",
+  "source_language": "en",
+  "version": "2026.05.14",
+  "generator": {
+    "name": "tts-smart-update.py",
+    "version": "1.2.0",
+    "provider": "xai-grok-tts",
+    "voice": "leo"
+  },
+  "sections": [
+    {
+      "section_id": "introduction",
+      "source_hash": "a1b2c3d4e5f60789",
+      "output_offset": 0,
+      "output_duration_ms": 24800,
+      "generated_at": "2026-05-14T10:22:13Z"
+    },
+    {
+      "section_id": "two-registers",
+      "source_hash": "9f8e7d6c5b4a3210",
+      "output_offset": 397600,
+      "output_duration_ms": 186400,
+      "generated_at": "2026-05-14T10:22:18Z"
+    },
+    {
+      "section_id": "music-analogy",
+      "source_hash": "7e6f5d4c3b2a1908",
+      "output_offset": 3380000,
+      "output_duration_ms": 142800,
+      "generated_at": "2026-05-10T08:45:01Z",
+      "skipped_reason": "hash unchanged from 2026-05-10 generation"
+    },
+    {
+      "section_id": "logos-substance-structure",
+      "source_hash": "5d4c3b2a19087fed",
+      "output_offset": 5664800,
+      "output_duration_ms": 98200,
+      "generated_at": "2026-05-14T10:22:24Z"
+    },
+    {
+      "section_id": "logos-and-dharma",
+      "source_hash": "3c2b1a0908fedcba",
+      "output_offset": 7236000,
+      "output_duration_ms": 121400,
+      "generated_at": "2026-05-10T08:45:09Z",
+      "skipped_reason": "hash unchanged from 2026-05-10 generation"
+    }
+  ],
+  "last_full_regeneration": "2026-05-10T08:44:51Z"
+}

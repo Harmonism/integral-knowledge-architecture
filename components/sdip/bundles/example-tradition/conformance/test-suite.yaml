@@ -1,0 +1,28 @@
+version: 2026.05
+tradition_id: example-tradition
+
+tests:
+
+  # Skeleton test suite. Define canonical queries with known-correct
+  # doctrinal positions. The test suite is how a practitioner verifies
+  # that a node claiming to run your tradition is actually doing so.
+
+  - id: example-001
+    category: foundational
+    query: "What is the core position of this tradition on [foundational question]?"
+    must_affirm:
+      - "[expected substring from the canonical answer]"
+    must_not_affirm:
+      - "[substring that signals doctrinal failure]"
+    must_cite_from:
+      - "foundational-doc.md"
+    severity: critical
+
+  - id: example-002
+    category: terminology
+    query: "Define [tradition's canonical term]."
+    must_affirm:
+      - "[expected definition substring]"
+    must_use_terminology:
+      - "ExampleConcept"
+    severity: major

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://harmonism.io/sdip/v0.1/manifest.schema.json",
+  "protocol": "sdip",
+  "protocol_version": "0.1",
+  "tradition_id": "example-tradition",
+  "tradition_name": "Example Tradition",
+  "version": "2026.05",
+  "language_primary": "en",
+  "license_corpus": "CC0-1.0",
+  "license_harness": "AGPL-3.0-or-later",
+  "license_spec": "CC-BY-4.0",
+  "publisher": {
+    "name": "Example Publisher",
+    "url": "https://example.invalid",
+    "contact": "publisher@example.invalid"
+  },
+  "integrity": {
+    "backbone_sha256": "a12513b6fbf97e6508e0db2afd2e6ed80c6cce9132f746260a903c92c57ffcd8",
+    "glossary_sha256": "1307592fce1b6ba04a2e17a0658c40eb35d926d9b8f5aa87ab6d3dfbd739c94e",
+    "calibrations_sha256": "9ee244c50cfb2720bd47ac228ced5bbd190241fffbd5c973405c2c970740e07c",
+    "corpus_sha256": "b58a3c8e25088915854f6ff254b2298d61551aa7a514378c0298efb26dd1bfb1"
+  },
+  "spec_url": "https://harmonism.io/sdip/v0.1"
+}

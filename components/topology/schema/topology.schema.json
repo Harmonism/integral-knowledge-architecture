@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/integral-knowledge-architecture/v0.1/topology.schema.json",
+  "title": "Fractal Heptagram Topology",
+  "description": "A tradition's fractal 7+1 knowledge architecture. Implements Pattern I of the Integral Knowledge Architecture methodology.",
+  "type": "object",
+  "required": ["tradition_id", "tradition_name", "version", "root_wheel"],
+  "properties": {
+    "tradition_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Lowercase namespace identifier for the tradition."
+    },
+    "tradition_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.[0-9]{2}(\\.[0-9]+)?$"
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier."
+    },
+    "root_wheel": {
+      "$ref": "#/$defs/Wheel"
+    }
+  },
+  "$defs": {
+    "Wheel": {
+      "type": "object",
+      "required": ["name", "centre", "peripherals"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of this wheel (e.g., 'Wheel of Harmony', 'Wheel of Health')."
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "URL-friendly slug for this wheel."
+        },
+        "description": {
+          "type": "string"
+        },
+        "centre": {
+          "$ref": "#/$defs/Centre"
+        },
+        "peripherals": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "$ref": "#/$defs/Peripheral"
+          },
+          "description": "Exactly seven co-equal peripherals. Enforced as exactly seven by minItems/maxItems."
+        }
+      },
+      "additionalProperties": false
+    },
+    "Centre": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The centre is a mode of engagement (a quality of consciousness), not a domain. For Harmonism: 'Presence'."
+        },
+        "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "description": {
+          "type": "string",
+          "description": "What this centre is and why it sits at centre rather than as a peripheral."
+        },
+        "fractal_correspondence": {
+          "type": "string",
+          "description": "How this centre corresponds to (or fractally repeats) the master centre. Required for sub-wheel centres; optional for the root wheel's centre."
+        }
+      },
+      "additionalProperties": false
+    },
+    "Peripheral": {
+      "type": "object",
+      "required": ["name", "slug"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of this peripheral pillar (e.g., 'Health', 'Matter')."
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "description": { "type": "string" },
+        "tier": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Content priority tier from Pattern IV. Tier 1 = deepest investment. Optional."
+        },
+        "sub_wheel": {
+          "$ref": "#/$defs/Wheel",
+          "description": "Recursive 7+1 expansion of this peripheral. Optional; when present, must itself be a valid Wheel."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

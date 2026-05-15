@@ -1,0 +1,32 @@
+id: companion-knowledge-drift
+name: Companion Knowledge Drift
+description: >
+  Detects when vault edits have made the AI companion's RAG index stale.
+  Compares vault article hashes against the indexed corpus and reports
+  severity plus the exact re-index command. Does not auto-reindex —
+  reindexing decisions stay editorial because they affect inference cost
+  and downtime.
+
+cadence:
+  schedule: "0 10 * * 2,5"   # Tuesday and Friday 10am UTC
+  tz: UTC
+
+surface: vault ↔ RAG index alignment
+
+detects:
+  - Articles modified in vault but unindexed in the RAG corpus
+  - Articles indexed but deleted from vault (ghosts)
+  - Classification gaps (articles with audience excluded but still indexed)
+  - Translation index gaps (articles translated but translation unindexed)
+
+report_destination: Internal/Digital/System Reports/{date}-companion-drift.md
+
+discipline:
+  detect_and_report_only: true
+  deltas_only: true
+  audience_tag: developer
+
+implementation:
+  language: python
+  entry: scripts/sensors/companion-knowledge-drift.py
+  dependencies: [sqlite3, hashlib]

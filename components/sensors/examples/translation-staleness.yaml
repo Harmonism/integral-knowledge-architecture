@@ -1,0 +1,32 @@
+id: translation-staleness
+name: Translation Staleness Sensor
+description: >
+  Runs the dual-validation pipeline (Pattern VII) across all translation
+  languages and reports which articles have drifted from source.
+  Pairs with the terminology linter for full coverage of both failure
+  modes — drift and translation errors.
+
+cadence:
+  schedule: "manual"   # Retired from automated schedule per Decision #758;
+                       # run from operator terminal at chosen cadence.
+  tz: n/a
+
+surface: translation files across i18n/translations/{lang}/
+
+detects:
+  - source_hash mismatch (source has drifted since translation)
+  - para_hash count mismatch (block count changed)
+  - Translation file present in some languages but missing in others
+  - Frontmatter integrity corruption (Decision #524 fix-hashes bug class)
+
+report_destination: stdout / operator terminal
+
+discipline:
+  detect_and_report_only: true
+  deltas_only: true
+  audience_tag: developer
+
+implementation:
+  language: python
+  entry: i18n/scripts/translate-sync.py status
+  dependencies: [PyYAML, httpx]

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/integral-knowledge-architecture/v0.1/regeneration-manifest.schema.json",
+  "title": "Regeneration Hash Manifest",
+  "description": "Per-section content-hash record for a regenerable output artifact. Implements Pattern XII of the Integral Knowledge Architecture methodology — hash-manifest incremental regeneration.",
+  "type": "object",
+  "required": ["artifact_id", "artifact_format", "source_id", "version", "sections"],
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "description": "Identifier for the output artifact (e.g., 'logos.mp3', 'philosophical-foundations.html', 'the-living-system.mp4')."
+    },
+    "artifact_format": {
+      "type": "string",
+      "enum": ["audio/mp3", "audio/wav", "audio/opus", "text/html", "video/mp4", "video/webm", "application/pdf"],
+      "description": "Output format. The regeneration pipeline must support splicing at section boundaries for the chosen format."
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Identifier for the source content this artifact regenerates from (e.g., source article path, source bundle ID)."
+    },
+    "source_language": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "description": "BCP 47 language code for the source content."
+    },
+    "version": {
+      "type": "string",
+      "description": "Date-based artifact version (YYYY.MM.DD or YYYY.MM)."
+    },
+    "generator": {
+      "type": "object",
+      "description": "What produced this artifact. Provider identification supports per-provider cost auditing and quality tracking.",
+      "properties": {
+        "name": { "type": "string", "description": "E.g., 'tts-smart-update.py', 'generate-book.py'." },
+        "version": { "type": "string" },
+        "provider": { "type": "string", "description": "External provider used by the generator (e.g., 'xai-grok-tts', 'system')." },
+        "voice": { "type": "string", "description": "For TTS artifacts: voice identifier." }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Section" },
+      "description": "Per-section hash records. Order MUST match the artifact's section order."
+    },
+    "last_full_regeneration": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the most recent full regeneration (e.g., for force-rebuilds, voice changes)."
+    }
+  },
+  "$defs": {
+    "Section": {
+      "type": "object",
+      "required": ["section_id", "source_hash"],
+      "properties": {
+        "section_id": {
+          "type": "string",
+          "description": "Stable identifier for this section (typically a slug or numeric index). MUST remain stable across regenerations to enable splicing."
+        },
+        "source_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8,64}$",
+          "description": "SHA-256 (or truncated SHA-256) of this section's source content at the time of last generation. Comparison against current source hash determines whether regeneration is needed."
+        },
+        "output_offset": {
+          "description": "Byte offset (for audio/video) or character offset (for text) of this section's start in the output artifact. Enables splicing without re-reading the entire artifact.",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "output_duration_ms": {
+          "description": "For audio/video: duration of this section in milliseconds.",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this specific section was last generated."
+        },
+        "skipped_reason": {
+          "type": "string",
+          "description": "Optional: when set, indicates this section was deliberately skipped on last regeneration (e.g., 'hash unchanged'). Audit trail for the regeneration discipline."
+        }
+      }
+    }
+  }
+}

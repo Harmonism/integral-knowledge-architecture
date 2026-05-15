@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/sdip/v0.1/calibrations.schema.json",
+  "title": "SDIP Calibration Schema",
+  "description": "Per-practitioner state columns the harness tracks across the relationship.",
+  "type": "object",
+  "required": ["version", "columns"],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "columns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Column" }
+    }
+  },
+  "$defs": {
+    "Column": {
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Column name. Must be a valid SQL identifier in lowercase snake_case."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["integer", "text", "real", "boolean", "json"],
+          "description": "Storage type."
+        },
+        "range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "For integer/real columns: [min, max] inclusive."
+        },
+        "default": {
+          "description": "Default value when the column is initialized."
+        },
+        "monotonic": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the column may only advance, never regress. Enforced by the harness via MAX(current, new)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this column tracks."
+        },
+        "advancement_detector": {
+          "type": "string",
+          "description": "Identifier of the detector that proposes advancements. Either 'builtin:{name}' for HarmonAI reference detectors, or 'tradition:{name}' for tradition-specific detectors implemented in the bundle's detectors/ directory."
+        },
+        "inject_as": {
+          "type": "string",
+          "description": "XML tag name under which this column is injected into the system prompt. E.g., 'doctrinal_fluency_level'."
+        },
+        "inject_block_builder": {
+          "type": "string",
+          "description": "Identifier of the block builder that constructs the injection text from the column value."
+        },
+        "schema_ref": {
+          "type": "string",
+          "description": "For json-type columns: path to a JSON schema describing the column's structure."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

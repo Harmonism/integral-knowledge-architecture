@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/integral-knowledge-architecture/v0.1/classification.schema.json",
+  "title": "Five-Axis Article Classification",
+  "description": "Epistemic metadata for an article in an integral knowledge corpus. Implements Pattern III of the Integral Knowledge Architecture methodology. The five axes are orthogonal — each combination tells you something the others cannot.",
+  "type": "object",
+  "required": [
+    "doctrinal_status",
+    "content_layer",
+    "breadth",
+    "depth",
+    "craft"
+  ],
+  "properties": {
+    "doctrinal_status": {
+      "type": "string",
+      "enum": ["clouded", "clear", "luminous"],
+      "description": "How clearly does the system see what this article claims? Ajna register, light vocabulary. 'clouded' — seeing still forming. 'clear' — settled, default tier. 'luminous' — illuminates adjacent territory; rare, earned, never declared."
+    },
+    "content_layer": {
+      "type": "string",
+      "enum": ["canon", "bridge", "applied", "paper"],
+      "description": "Editorial register. 'canon' — intemporal metaphysical architecture; no external citations. 'bridge' — connects doctrine to modern science, specific traditions, contemporary findings. 'applied' — commentary, protocols, analysis engaging the world. 'paper' — academic-paper register, citation as interlocutor."
+    },
+    "breadth": {
+      "type": "string",
+      "enum": ["partial", "substantial", "full"],
+      "description": "What proportion of the article's intended territory has been claimed. 'partial' — skeleton or significant territory uncovered. 'substantial' — most territory covered with identifiable gaps. 'full' — all intended sections present."
+    },
+    "depth": {
+      "type": "string",
+      "enum": ["introductory", "developed", "comprehensive"],
+      "description": "How thoroughly the article penetrates the territory it has claimed. 'introductory' — covers essentials, coherent first orientation. 'developed' — real engagement with complexity. 'comprehensive' — approaches the fullness of what the system intends to say."
+    },
+    "craft": {
+      "type": "string",
+      "enum": ["muddy", "clean", "pure"],
+      "description": "Quality of making. Vishuddha register, water vocabulary. 'muddy' — channel not cut cleanly; fails at least one of precision/compression/coherence/register/sovereignty/transmissibility. 'clean' — passes every dimension at minimum threshold. 'pure' — reference quality; rare, earned, never declared."
+    }
+  }
+}

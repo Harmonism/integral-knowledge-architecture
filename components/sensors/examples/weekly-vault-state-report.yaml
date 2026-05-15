@@ -1,0 +1,34 @@
+id: weekly-vault-state-report
+name: Weekly Vault State Report
+description: >
+  The Monitor centre of the system. Surveys vault state along the five
+  classification axes, surfaces high-leverage writing targets, checks
+  cross-reference integrity, and produces a writing brief for the
+  upcoming week. Operates as ambient editorial intelligence.
+
+cadence:
+  schedule: "0 20 * * 0"   # Sunday 8pm UTC
+  tz: UTC
+
+surface: vault classification metadata + cross-references
+
+detects:
+  - All stable+partial articles (highest-leverage writing targets)
+  - All stable+substantial articles (close-out candidates)
+  - All stable+full+introductory (deepening candidates)
+  - All stable+full+muddy (craft-polishing candidates)
+  - Broken wikilinks (target file does not exist)
+  - Frontmatter classification gaps (missing axes, invalid values)
+  - Articles with no inbound wikilinks (orphaned content)
+
+report_destination: Internal/Digital/System Reports/{date}-vault-state.md
+
+discipline:
+  detect_and_report_only: true
+  deltas_only: false   # Weekly snapshot is the report; deltas show in trend over time
+  audience_tag: developer
+
+implementation:
+  language: python
+  entry: scripts/sensors/weekly-vault-state-report.py
+  dependencies: [PyYAML]

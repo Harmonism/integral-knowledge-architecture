@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/sdip/v0.1/conformance.schema.json",
+  "title": "SDIP Conformance Test Suite",
+  "description": "Test queries with known-correct doctrinal positions for fidelity verification.",
+  "type": "object",
+  "required": ["version", "tradition_id", "tests"],
+  "properties": {
+    "version": { "type": "string" },
+    "tradition_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "judge_model": {
+      "type": "string",
+      "description": "Recommended model for judging test outputs (LLM-as-judge). If absent, the harness uses the node's own model for self-evaluation."
+    },
+    "tests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Test" }
+    }
+  },
+  "$defs": {
+    "Test": {
+      "type": "object",
+      "required": ["id", "query"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Stable identifier for this test."
+        },
+        "query": {
+          "type": "string",
+          "description": "The query to send to the node."
+        },
+        "must_affirm": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Doctrinal positions the response must affirm (substring/semantic match)."
+        },
+        "must_not_affirm": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Doctrinal positions the response must not affirm."
+        },
+        "must_cite_from": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Corpus files at least one of which must appear in the retrieval signature for this query."
+        },
+        "must_use_terminology": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glossary terms that must appear in the response."
+        },
+        "must_not_use_terminology": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Terms that signal failure (e.g., hedge words for canon-register tests)."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "minor"],
+          "default": "major",
+          "description": "Critical failures fail the overall suite; major and minor are counted but don't fail."
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional grouping label (e.g., 'metaphysics', 'ethics', 'practice')."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

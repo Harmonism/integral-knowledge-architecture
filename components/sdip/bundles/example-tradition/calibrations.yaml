@@ -1,0 +1,28 @@
+version: 2026.05
+columns:
+
+  # Skeleton calibration schema. Define the per-practitioner state your
+  # tradition's harness tracks across the relationship.
+  #
+  # Common patterns:
+  # - A vocabulary-fluency column conditioning register
+  # - A topic-openness column for advanced or sensitive content
+  # - A structural-engagement column (your tradition's Wheel equivalent)
+  # - A conversation-context column (current thread, open commitments, etc.)
+  #
+  # Monotonic columns (monotonic: true) may only advance, never regress.
+  # Per the protocol: read-before-advance — the level injected into the
+  # current turn is the level the practitioner walked in with.
+
+  - name: vocabulary_fluency
+    type: integer
+    range: [0, 3]
+    default: 0
+    monotonic: true
+    description: "Demonstrated familiarity with this tradition's canonical terminology"
+    advancement_detector: builtin:terminology_density
+    inject_as: vocabulary_fluency_level
+
+  - name: example_state
+    type: json
+    description: "Free-form state — replace with your tradition's structural-engagement schema"

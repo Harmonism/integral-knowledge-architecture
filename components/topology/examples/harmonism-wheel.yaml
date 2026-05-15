@@ -1,0 +1,192 @@
+# Harmonism — the reference fractal-heptagram topology
+# Implements Pattern I of the Integral Knowledge Architecture methodology
+# https://harmonism.io/wheel-of-harmony
+
+tradition_id: harmonism
+tradition_name: Harmonism
+version: "2026.05"
+license: CC-BY-4.0
+
+root_wheel:
+  name: Wheel of Harmony
+  slug: wheel-of-harmony
+  description: >
+    The individual blueprint. Eight pillars in 7+1 structure: Presence at
+    centre, seven peripherals (Health, Matter, Service, Relationships,
+    Learning, Nature, Recreation). Each peripheral expands fractally into
+    its own 7+1 sub-wheel.
+
+  centre:
+    name: Presence
+    slug: presence
+    description: >
+      The sovereign ground of being — the mode of conscious awareness from
+      which every pillar is engaged. Not generic mindfulness. The state
+      from which Health is monitored, Matter is stewarded, Service is
+      offered, Relationships are met. Deepening Presence enriches every
+      peripheral.
+
+  peripherals:
+
+    - name: Health
+      slug: health
+      tier: 1
+      description: >
+        Physical and energetic vitality. The substrate the rest of the life
+        runs on. Empirically demonstrable, universally accessible —
+        therefore Tier 1 in the Content Priority Architecture.
+      sub_wheel:
+        name: Wheel of Health
+        slug: wheel-of-health
+        centre:
+          name: Monitor
+          slug: monitor
+          description: Sovereign diagnostic awareness. The fractal of Presence at the body level.
+          fractal_correspondence: Presence applied to the body's diagnostic register.
+        peripherals:
+          - { name: Sleep, slug: sleep }
+          - { name: Recovery, slug: recovery }
+          - { name: Supplementation, slug: supplementation }
+          - { name: Hydration, slug: hydration }
+          - { name: Purification, slug: purification }
+          - { name: Nutrition, slug: nutrition }
+          - { name: Movement, slug: movement }
+
+    - name: Matter
+      slug: matter
+      tier: 2
+      description: >
+        Right relationship with material substrate — home, transportation,
+        clothing, technology, finance, provisioning, security. Stewardship
+        as centre.
+      sub_wheel:
+        name: Wheel of Matter
+        slug: wheel-of-matter
+        centre:
+          name: Stewardship
+          slug: stewardship
+          description: Right relationship with material substrate. The fractal of Presence at the material level.
+          fractal_correspondence: Presence directed toward material things — cultivating what is given rather than consuming it.
+        peripherals:
+          - { name: Home & Habitat, slug: home-habitat }
+          - { name: Transportation & Mobility, slug: transportation }
+          - { name: Clothing & Personal Items, slug: clothing }
+          - { name: Technology & Tools, slug: technology-tools }
+          - { name: Finance & Wealth, slug: finance-wealth }
+          - { name: Provisioning & Supply, slug: provisioning }
+          - { name: Security & Protection, slug: security }
+
+    - name: Service
+      slug: service
+      tier: 2
+      description: >
+        Vocational alignment with Dharma. The pillar of contribution and
+        right work.
+      sub_wheel:
+        name: Wheel of Service
+        slug: wheel-of-service
+        centre:
+          name: Offering
+          slug: offering
+          description: The Dharmic register of work. The fractal of Presence in the relational-vocational field.
+          fractal_correspondence: Presence directed toward what one gives.
+        peripherals:
+          - { name: Vocation, slug: vocation }
+          - { name: Value Creation, slug: value-creation }
+          - { name: Leadership, slug: leadership }
+          - { name: Collaboration, slug: collaboration }
+          - { name: Ethics & Accountability, slug: ethics-accountability }
+          - { name: Systems & Operations, slug: systems-operations }
+          - { name: Communication & Influence, slug: communication-influence }
+
+    - name: Relationships
+      slug: relationships
+      tier: 3
+      description: >
+        The crucible where practice meets reality. Sharp, honest,
+        unflinching — fewer articles but each cuts deep.
+      sub_wheel:
+        name: Wheel of Relationships
+        slug: wheel-of-relationships
+        centre:
+          name: Love
+          slug: love
+          description: The relational ground from which every connection is met. The fractal of Presence in human encounter.
+          fractal_correspondence: Presence directed toward another.
+        peripherals:
+          - { name: Couple, slug: couple }
+          - { name: Parenting, slug: parenting }
+          - { name: Family Elders, slug: family-elders }
+          - { name: Friendship, slug: friendship }
+          - { name: Community, slug: community }
+          - { name: Service to Vulnerable, slug: service-vulnerable }
+          - { name: Communication, slug: communication }
+
+    - name: Learning
+      slug: learning
+      tier: 4
+      description: >
+        Cultivation of wisdom across philosophical, practical, healing,
+        gender, communicative, digital, and scientific domains.
+      sub_wheel:
+        name: Wheel of Learning
+        slug: wheel-of-learning
+        centre:
+          name: Wisdom
+          slug: wisdom
+          description: The integrative knowing that holds many domains together. The fractal of Presence in the epistemic register.
+          fractal_correspondence: Presence directed toward what is known.
+        peripherals:
+          - { name: Philosophy & Sacred Knowledge, slug: philosophy }
+          - { name: Practical Skills, slug: practical-skills }
+          - { name: Healing Arts, slug: healing-arts }
+          - { name: Gender & Initiation, slug: gender-initiation }
+          - { name: Communication & Language, slug: language }
+          - { name: Digital Arts, slug: digital-arts }
+          - { name: Science & Systems, slug: science-systems }
+
+    - name: Nature
+      slug: nature
+      tier: 4
+      description: >
+        Ecological relationship with land, water, air, soil, and the living
+        beings that share the practitioner's place.
+      sub_wheel:
+        name: Wheel of Nature
+        slug: wheel-of-nature
+        centre:
+          name: Reverence
+          slug: reverence
+          description: The recognition that one is met by what one meets. The fractal of Presence in ecological encounter.
+          fractal_correspondence: Presence directed toward the more-than-human world.
+        peripherals:
+          - { name: Permaculture / Gardens / Trees, slug: permaculture }
+          - { name: Nature Immersion, slug: nature-immersion }
+          - { name: Water, slug: water }
+          - { name: Earth & Soil, slug: earth-soil }
+          - { name: Air & Sky, slug: air-sky }
+          - { name: Animals & Shelter, slug: animals }
+          - { name: Ecology & Resilience, slug: ecology }
+
+    - name: Recreation
+      slug: recreation
+      tier: 4
+      description: >
+        Play, art, travel, sport — the registers where the practitioner is
+        not striving toward an outcome but participating in what is.
+      sub_wheel:
+        name: Wheel of Recreation
+        slug: wheel-of-recreation
+        centre:
+          name: Joy
+          slug: joy
+          description: The register where play is its own reward. The fractal of Presence in the gratuitous.
+          fractal_correspondence: Presence with no objective beyond the encounter itself.
+        peripherals:
+          - { name: Music, slug: music }
+          - { name: Visual & Plastic Arts, slug: visual-arts }
+          - { name: Narrative Arts, slug: narrative-arts }
+          - { name: Sports & Physical Play, slug: sports }
+          - { name: Digital Entertainment, slug: digital-entertainment }
+          - { name: Travel & Adventure, slug: travel }
+          - { name: Social Gatherings, slug: social }

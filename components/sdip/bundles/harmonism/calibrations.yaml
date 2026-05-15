@@ -1,0 +1,75 @@
+version: 2026.05
+columns:
+
+  # ─── Doctrinal fluency (Decision #536) ────────────────────────────────────
+  # Tracks the practitioner's demonstrated familiarity with Harmonist
+  # canonical terms. Conditions MunAI's register: plain-English with lived-
+  # experience framing at level 0, full vocabulary as shared language at
+  # level 3. Monotonic — once advanced, never regresses.
+
+  - name: doctrinal_fluency
+    type: integer
+    range: [0, 3]
+    default: 0
+    monotonic: true
+    description: "Demonstrated vocabulary fluency with Harmonism's canonical terms (Logos, Dharma, Presence, the Wheel, Harmonic Realism, chakras, Jing/Qi/Shen, etc.)"
+    advancement_detector: builtin:terminology_density
+    inject_as: doctrinal_fluency_level
+    inject_block_builder: harmonism:doctrinal_fluency
+
+  # ─── Bodily openness (Decision #775) ──────────────────────────────────────
+  # Tracks how openly the practitioner engages bodily / sexual / intimacy
+  # register. Conditions whether MunAI surfaces those dimensions proactively
+  # in Wheel-aware questions. Monotonic floor — once opened, the register
+  # stays available.
+
+  - name: bodily_openness
+    type: integer
+    range: [0, 3]
+    default: 0
+    monotonic: true
+    description: "How openly the practitioner engages bodily / sexual / physical-intimacy register"
+    advancement_detector: builtin:bodily_register
+    inject_as: bodily_openness_level
+    inject_block_builder: harmonism:bodily_openness
+
+  # ─── Wheel profile (Decision #181) ────────────────────────────────────────
+  # Per-pillar engagement scoring across the Wheel of Harmony's 7+1 structure.
+  # Updated every N messages via Claude learning call. Not monotonic — the
+  # practitioner can drift backward on a pillar.
+
+  - name: wheel_profile
+    type: json
+    description: "Per-pillar engagement levels: presence, health, matter, service, relationships, learning, nature, recreation"
+    schema_ref: schemas/harmonism-wheel-profile.json
+
+  # ─── Conversation state (Decision #538) ───────────────────────────────────
+  # The 16-emotion + situation-capsule + thread/commitment state the harness
+  # tracks across turns. Updated every 10 messages via Claude learning call.
+
+  - name: dominant_emotion
+    type: text
+    description: "Practitioner's current dominant emotion (one of 16: lonely, afraid, grateful, ashamed, hopeful, frustrated, grieving, overwhelmed, peaceful, curious, resentful, tender, defiant, numb, reverent, longing)"
+    inject_as: emotional_context
+
+  - name: situation_capsule
+    type: text
+    description: "≤60-char free-text capsule of current life context"
+    inject_as: situation
+
+  - name: conversation_state
+    type: json
+    description: "JSON: {current_thread, pending_threads[≤5], open_commitments[≤5], last_arc_reading_at}"
+    inject_as: conversation_state
+
+  # ─── Witness mode (Decision #535) ─────────────────────────────────────────
+  # Acute-activation gate. Not a column the harness writes between turns;
+  # the detector runs pre-classification on every message and emits the
+  # injection block when triggered. Documented here for protocol-conformance
+  # auditing.
+
+  - name: _witness_mode_pre_pass
+    type: boolean
+    description: "Computed per-message; not stored. Documented for audit. Triggers full-Opus routing plus <witness_mode_active> injection on acute-activation markers (grief loops, panic, dissociation, overwhelm, suicidal ideation)."
+    advancement_detector: builtin:witness_mode
+    inject_as: witness_mode_active

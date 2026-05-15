@@ -1,0 +1,20 @@
+version: 2026.05
+language_primary: en
+entries:
+
+  # Skeleton glossary. Replace with your tradition's terminology.
+  #
+  # Each entry: term + definition (<=200 chars for tooltip rendering),
+  # optional adoption status (native | tradition-specific | untranslatable),
+  # optional translations map, optional source_tradition.
+
+  - term: ExampleConcept
+    definition: "Placeholder concept demonstrating glossary entry shape. Replace with your tradition's foundational terms."
+    adoption: native
+    translations:
+      fr: ConceptExemple
+
+  - term: AnotherConcept
+    definition: "A tradition-specific term adopted from another tradition. Source tradition is named."
+    adoption: tradition-specific
+    source_tradition: example-source

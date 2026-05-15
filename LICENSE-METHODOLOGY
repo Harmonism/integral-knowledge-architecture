@@ -1,0 +1,42 @@
+Methodology of Integral Knowledge Architecture — Methodology and Schemas
+
+Copyright (c) 2026 Harmonia
+
+The methodology document (METHODOLOGY.md), the JSON schemas under
+components/*/schema/, the YAML schema conventions, and the per-pattern
+documentation under patterns/ are licensed under the Creative Commons
+Attribution 4.0 International License (CC-BY-4.0).
+
+You are free to:
+
+  Share — copy and redistribute the material in any medium or format
+  Adapt — remix, transform, and build upon the material for any purpose,
+          even commercially
+
+Under the following terms:
+
+  Attribution — You must give appropriate credit (Harmonia,
+                https://harmonism.io), provide a link to the license,
+                and indicate if changes were made. You may do so in any
+                reasonable manner, but not in any way that suggests the
+                licensor endorses you or your use.
+
+  No additional restrictions — You may not apply legal terms or
+                technological measures that legally restrict others from
+                doing anything the license permits.
+
+The full text of CC-BY-4.0 is available at:
+  https://creativecommons.org/licenses/by/4.0/legalcode
+
+---
+
+The methodology is licensed permissively because its value is in its
+adoption. A tradition that applies the patterns to organize its own
+knowledge architecture, a researcher who cites the methodology in
+academic work, a software project that adopts the schemas for
+interoperability — all are welcome with attribution and without further
+licensing friction.
+
+The reference implementations under components/*/ are AGPL-3.0 to
+preserve the open-source invariants the methodology itself requires.
+See LICENSE.

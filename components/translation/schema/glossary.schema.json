@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/sdip/v0.1/glossary.schema.json",
+  "title": "SDIP Glossary",
+  "description": "Tradition-specific terminology with definitions, translations, and adoption status.",
+  "type": "object",
+  "required": ["version", "entries"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Glossary version, typically matching the bundle version."
+    },
+    "language_primary": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "description": "Primary language of term entries (definitions are in this language)."
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Entry" }
+    }
+  },
+  "$defs": {
+    "Entry": {
+      "type": "object",
+      "required": ["term", "definition"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "description": "The canonical term as it appears in the corpus."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Concise definition, typically <=200 characters for tooltip rendering."
+        },
+        "adoption": {
+          "type": "string",
+          "enum": ["native", "tradition-specific", "untranslatable"],
+          "default": "native",
+          "description": "Adoption status. 'native' = this tradition's primary vocabulary. 'tradition-specific' = used in cross-tradition contexts but doesn't lead. 'untranslatable' = preserved verbatim across translations."
+        },
+        "translations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Map of language code to translated term."
+        },
+        "source_tradition": {
+          "type": "string",
+          "description": "Tradition the term originates from, if this tradition has adopted it from another."
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Alternative spellings or related terms that should resolve to this entry."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Term has been retired but is preserved for backward compatibility."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/sdip/v0.1/manifest.schema.json",
+  "title": "SDIP Bundle Manifest",
+  "description": "Identity, version, license, and integrity manifest for a Sovereign Doctrinal Inference Protocol bundle.",
+  "type": "object",
+  "required": [
+    "protocol",
+    "protocol_version",
+    "tradition_id",
+    "tradition_name",
+    "version",
+    "language_primary",
+    "license_corpus",
+    "license_harness",
+    "publisher",
+    "integrity"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional JSON Schema reference for tooling."
+    },
+    "protocol": {
+      "type": "string",
+      "const": "sdip",
+      "description": "Protocol identifier. Always 'sdip'."
+    },
+    "protocol_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Protocol major.minor version (e.g., '0.1')."
+    },
+    "tradition_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 64,
+      "description": "Lowercase namespace identifier for the tradition under the publisher's control."
+    },
+    "tradition_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable name of the tradition."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.[0-9]{2}(\\.[0-9]+)?$",
+      "description": "Date-based bundle version (YYYY.MM or YYYY.MM.N)."
+    },
+    "language_primary": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "description": "Primary language of the backbone and the unannotated corpus (BCP 47 short form)."
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+      },
+      "uniqueItems": true,
+      "description": "All languages with translations available in i18n/translations/."
+    },
+    "license_corpus": {
+      "type": "string",
+      "description": "SPDX license identifier for the corpus and backbone content."
+    },
+    "license_harness": {
+      "type": "string",
+      "description": "SPDX license identifier for the bundled harness (typically AGPL-3.0-or-later)."
+    },
+    "license_spec": {
+      "type": "string",
+      "description": "SPDX license identifier for the specification (typically CC-BY-4.0)."
+    },
+    "publisher": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "contact": { "type": "string" },
+        "public_key": {
+          "type": "string",
+          "description": "Publisher's signing public key (PEM, age, or other). OPTIONAL at v0.1, REQUIRED at v0.2."
+        }
+      }
+    },
+    "publisher_signature": {
+      "type": "string",
+      "description": "Detached signature over backbone + corpus + glossary + calibrations. OPTIONAL at v0.1."
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["backbone_sha256", "glossary_sha256", "calibrations_sha256"],
+      "properties": {
+        "backbone_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of backbone.md (after frontmatter, body only)."
+        },
+        "corpus_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of a deterministic Merkle root over the corpus/ directory."
+        },
+        "glossary_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of glossary.yaml."
+        },
+        "calibrations_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of calibrations.yaml."
+        }
+      }
+    },
+    "spec_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the protocol specification this bundle conforms to."
+    },
+    "bundle_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical distribution URL of this bundle. Recommended for practitioner-initiated updates."
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the bundle's publication."
+    },
+    "previous_version": {
+      "type": "string",
+      "description": "The version this bundle supersedes. Recommended for upgrade-path discovery."
+    }
+  },
+  "additionalProperties": false
+}

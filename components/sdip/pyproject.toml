@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sdip"
+version = "0.1.0"
+description = "Reference implementation of the Sovereign Doctrinal Inference Protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+authors = [
+    { name = "Harmonia", email = "harmonia@harmonism.io" }
+]
+keywords = [
+    "sdip", "sovereign", "inference", "rag", "llm",
+    "doctrinal", "harmonism", "harmonai", "sovereignty"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries",
+]
+
+dependencies = [
+    "jsonschema>=4.0",
+    "PyYAML>=6.0",
+    "httpx>=0.27",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+embeddings = [
+    "openai>=1.0",      # for OpenAI-API-compatible embeddings (incl. local servers)
+    "numpy>=1.24",
+]
+serve = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://harmonism.io/sdip"
+Documentation = "https://harmonism.io/sdip/v0.1"
+Repository = "https://github.com/harmonia/sdip"
+Specification = "https://harmonism.io/sdip/v0.1/spec"
+Issues = "https://github.com/harmonia/sdip/issues"
+
+[project.scripts]
+sdip = "sdip.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sdip"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true

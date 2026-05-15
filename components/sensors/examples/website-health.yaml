@@ -1,0 +1,33 @@
+id: website-health
+name: Website Health Check
+description: >
+  Fetches a representative set of public URLs to catch silent deploy breakage
+  before readers encounter 404s, broken interactive components, or expired
+  certificates. Reports only deltas from the previous run — a fully-green
+  fetch produces no report.
+
+cadence:
+  schedule: "0 7 * * *"   # daily 7am UTC
+  tz: UTC
+
+surface: public website (https URLs)
+
+detects:
+  - HTTP non-200 responses on monitored URLs
+  - Missing-asset failures (CSS, JS, iframe components)
+  - Certificate near-expiry (<14 days)
+  - Search index missing (Pagefind built but not deployed)
+  - Wheel iframe components not loading (mobile vs desktop)
+  - Translation page 404s (language-prefixed URLs)
+
+report_destination: Internal/Digital/System Reports/{date}-website-health.md
+
+discipline:
+  detect_and_report_only: true
+  deltas_only: true
+  audience_tag: developer
+
+implementation:
+  language: python
+  entry: scripts/sensors/website-health.py
+  dependencies: [httpx, certifi]

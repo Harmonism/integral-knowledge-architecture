@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmonism.io/integral-knowledge-architecture/v0.1/extraction-step-descriptors.schema.json",
+  "title": "External Content Integration — Step Descriptors",
+  "description": "Per-step descriptor for the six-step extraction protocol. Implements Pattern XIII of the Integral Knowledge Architecture methodology.",
+  "type": "object",
+  "required": ["protocol_version", "source", "steps"],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "source": {
+      "type": "object",
+      "required": ["type", "identifier"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["pdf", "audio", "video", "web-article", "ebook", "transcript", "text"],
+          "description": "Source content type. Determines step 1's extraction tooling."
+        },
+        "identifier": {
+          "type": "string",
+          "description": "URL, file path, or ISBN identifying the source."
+        },
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "publication_date": { "type": "string" },
+        "duration_seconds": { "type": "integer", "description": "For audio/video sources." }
+      }
+    },
+    "steps": {
+      "type": "object",
+      "required": ["extract", "assess", "identify_kernels", "reframe", "route", "verify"],
+      "properties": {
+        "extract": { "$ref": "#/$defs/ExtractStep" },
+        "assess": { "$ref": "#/$defs/AssessStep" },
+        "identify_kernels": { "$ref": "#/$defs/KernelsStep" },
+        "reframe": { "$ref": "#/$defs/ReframeStep" },
+        "route": { "$ref": "#/$defs/RouteStep" },
+        "verify": { "$ref": "#/$defs/VerifyStep" }
+      }
+    },
+    "tradition_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Tradition whose architecture this extraction routes into."
+    }
+  },
+  "$defs": {
+    "ExtractStep": {
+      "type": "object",
+      "required": ["tool", "output_path"],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "examples": ["marker", "docling", "mineru", "whisper", "defuddle", "pymupdf4llm"]
+        },
+        "output_path": {
+          "type": "string",
+          "description": "Path to the cleaned Markdown output of step 1."
+        },
+        "metadata_preserved": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["author", "title", "publication_date", "citations", "timestamps", "page_numbers"] }
+        },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AssessStep": {
+      "type": "object",
+      "required": ["doctrinal_frame"],
+      "properties": {
+        "doctrinal_frame": {
+          "type": "string",
+          "description": "Reference to the tradition's doctrinal backbone (Pattern VI) used as the assessment frame."
+        },
+        "convergences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Observation" },
+          "description": "Where the source's claims converge with existing canon."
+        },
+        "divergences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Observation" },
+          "description": "Where the source diverges from existing canon."
+        },
+        "novel_candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Observation" },
+          "description": "Candidate kernels the tradition has not yet articulated."
+        },
+        "completed_by": { "type": "string", "description": "Operator name or AI agent identifier." },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Observation": {
+      "type": "object",
+      "required": ["claim"],
+      "properties": {
+        "claim": { "type": "string" },
+        "source_location": { "type": "string", "description": "Page number, timestamp, paragraph reference." },
+        "vault_correspondences": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Existing vault articles related to this claim."
+        }
+      }
+    },
+    "KernelsStep": {
+      "type": "object",
+      "required": ["kernels"],
+      "properties": {
+        "kernels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Kernel" }
+        }
+      }
+    },
+    "Kernel": {
+      "type": "object",
+      "required": ["id", "claim", "source_location"],
+      "properties": {
+        "id": { "type": "string", "description": "Stable identifier for this kernel within the extraction session." },
+        "claim": {
+          "type": "string",
+          "description": "The discrete unit of intellectual content. NOT a quote — a kernel is the structural claim, abstracted from the source's specific phrasing."
+        },
+        "source_location": { "type": "string" },
+        "source_quote": {
+          "type": "string",
+          "description": "Optional: the source phrasing that motivated this kernel. Distinguished from `claim`: the quote is for traceability; the kernel is what gets integrated."
+        }
+      }
+    },
+    "ReframeStep": {
+      "type": "object",
+      "properties": {
+        "reframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kernel_id", "native_articulation"],
+            "properties": {
+              "kernel_id": { "type": "string" },
+              "native_articulation": {
+                "type": "string",
+                "description": "The kernel restated in the tradition's terminology."
+              },
+              "vocabulary_gaps": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Concepts the tradition does not yet have language for. Surfaces editorial work."
+              }
+            }
+          }
+        }
+      }
+    },
+    "RouteStep": {
+      "type": "object",
+      "properties": {
+        "routings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kernel_id", "destination_path", "destination_layer"],
+            "properties": {
+              "kernel_id": { "type": "string" },
+              "destination_path": { "type": "string", "description": "Vault file path receiving the kernel." },
+              "destination_layer": {
+                "type": "string",
+                "enum": ["bridge", "applied", "paper"],
+                "description": "MUST NOT be 'canon'. Pattern III routing rule."
+              },
+              "destination_action": {
+                "type": "string",
+                "enum": ["seed_new_article", "expand_existing_section", "add_citation"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "VerifyStep": {
+      "type": "object",
+      "properties": {
+        "verifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kernel_id", "outcome"],
+            "properties": {
+              "kernel_id": { "type": "string" },
+              "outcome": {
+                "type": "string",
+                "enum": ["integrated_coherent", "integrated_with_editorial_work", "rolled_back_contradictory", "rolled_back_misrouted"]
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

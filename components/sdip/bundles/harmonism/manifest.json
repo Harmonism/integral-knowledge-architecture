@@ -1,0 +1,27 @@
+{
+  "$schema": "https://harmonism.io/sdip/v0.1/manifest.schema.json",
+  "protocol": "sdip",
+  "protocol_version": "0.1",
+  "tradition_id": "harmonism",
+  "tradition_name": "Harmonism",
+  "version": "2026.05",
+  "language_primary": "en",
+  "languages": ["en", "fr", "es", "ar", "pt", "de", "zh", "ja", "hi", "ru"],
+  "license_corpus": "CC-BY-4.0",
+  "license_harness": "AGPL-3.0-or-later",
+  "license_spec": "CC-BY-4.0",
+  "publisher": {
+    "name": "Harmonia",
+    "url": "https://harmonism.io",
+    "contact": "harmonia@harmonism.io"
+  },
+  "integrity": {
+    "backbone_sha256": "20c709b2537edf1331ec191bdb87e566890a12c7371136590b1f228f306d5349",
+    "glossary_sha256": "39256c8aa716fa3919a253404e3fb18ac94bbaddc0afd604908cb0ec6d6af813",
+    "calibrations_sha256": "2e8e3fe3ebd501d1835726df75711373dd6a9b8ab2bc2944e4829bb5e941faf9",
+    "corpus_sha256": "c10bcf49084f2f1291d698c40d84fe2587d16e6b4b202e039977b79b6fec318c"
+  },
+  "spec_url": "https://harmonism.io/sdip/v0.1",
+  "bundle_url": "https://harmonism.io/sovereignty-bundle.zip",
+  "published_at": "2026-05-13T00:00:00Z"
+}
