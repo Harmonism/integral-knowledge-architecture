@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Met
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-18 — Vault-Alignment Pass
+
+Brings the published framework back into alignment with the doctrinal evolution of the source vault since the initial release. No new engineering — the change is to the methodology layer, tracking how Harmonia's own articulation of these patterns has matured.
+
+### Added
+
+- **`METHODOLOGY.md` § VI — "The Substrate Beneath the Context Layer."** New subsection articulating the two-layer composition the context-engineering pattern was always implicitly resting on: the context layer (substrate-agnostic, corrects the model's hand at the prompt, what this pattern transfers) and the model layer (substrate-specific alignment on a *fully-open* model — weights, corpus, training code, checkpoints, of which Ai2's OLMo family is the leading instance — reachable only with training capacity). The context layer is primary and ships now; substrate-specific alignment is the trajectory a system grows into, not a prerequisite. Cross-references the *Inference Sovereignty* doctrine and the *Doctrinal Fidelity in Aligned AI* Living Paper.
+- **`patterns/vi-context-engineering/README.md` — substrate-layer section** mirroring the methodology addition, with pointers to the *Inference Sovereignty* article and to SDIP's existing OpenAI-compatible local-endpoint routing as the built-in substitution point for either layer.
+
+### Changed
+
+- **Pattern V renamed "Companion as Transmission Architecture" → "AI Companion as Transmission Architecture,"** and "the Companion" → "the AI companion" throughout, aligning with the source vault's lowercase-companion naming discipline ("companion" is the functional category, not a proper noun). Propagated across `METHODOLOGY.md`, `README.md` (pattern table + status table), and `patterns/v-companion/README.md`.
+- **Harmonized the `METHODOLOGY.md` knowledge-system size figure** — the intro (`~470-file`) and body (`430-file`) disagreed; both now read `~470-file`, an approximate figure that avoids false precision on a count that drifts continuously.
+
 ## [0.1.0] — 2026-05-15 — Initial Public Release
 
 The first public release of the Integral Knowledge Architecture framework. Tradition-neutral methodology for organizing, maintaining, and transmitting integral knowledge through AI, paired with the reference implementations of the patterns where code is the natural artifact.

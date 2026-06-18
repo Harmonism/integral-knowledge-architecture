@@ -26,7 +26,7 @@ Each pattern is a problem class plus a solution pattern, validated against the p
 | II | [Centre-Spoke Topology](./patterns/ii-centre-spoke/) | Every choice of centre privileges one domain and subordinates others. | (specification only) |
 | III | [Epistemic Metadata Framework](./patterns/iii-epistemic-metadata/) | Articles in a large vault have different epistemic standings; binary draft/published toggles cannot represent this. | [`classification/`](./components/classification/) |
 | IV | [Content Priority Architecture](./patterns/iv-content-priority/) | Equal investment across domains produces mediocrity everywhere; author-driven investment produces unprincipled asymmetry. | (specification only) |
-| V | [Companion as Transmission Architecture](./patterns/v-companion/) | Personalised integral transmission has never scaled beyond the one-to-one relationship. | [`sdip/`](./components/sdip/) |
+| V | [AI Companion as Transmission Architecture](./patterns/v-companion/) | Personalised integral transmission has never scaled beyond the one-to-one relationship. | [`sdip/`](./components/sdip/) |
 | VI | [Three-Tier Context Engineering](./patterns/vi-context-engineering/) | RLHF-trained models hedge stable doctrinal positions structurally, not editorially. | [`sdip/`](./components/sdip/) |
 | VII | [Translation Pipeline Architecture](./patterns/vii-translation/) | AI translation silently violates doctrinal terminology; staleness and translation-error are non-overlapping failure modes. | [`translation/`](./components/translation/) |
 | VIII | [QA Sensor Architecture](./patterns/viii-qa-sensors/) | Living knowledge systems accumulate entropy invisibly; automated repair masks failure modes. | [`sensors/`](./components/sensors/) |
@@ -89,7 +89,7 @@ Three honest tiers, ordered by leverage.
 | II — Centre-Spoke | ✓ | n/a | (architectural pattern, no code) | Doctrine-grade |
 | III — Epistemic Metadata | ✓ | ✓ v0.1 (5-axis) | ✓ v0.1 linter stub | Schema-grade |
 | IV — Content Priority | ✓ | n/a | (editorial pattern) | Doctrine-grade |
-| V — Companion | ✓ | ✓ (SDIP manifest) | ✓ v0.1 (SDIP) | Implementation-grade |
+| V — AI Companion | ✓ | ✓ (SDIP manifest) | ✓ v0.1 (SDIP) | Implementation-grade |
 | VI — Context Engineering | ✓ | ✓ (SDIP calibrations) | ✓ v0.1 (SDIP) | Implementation-grade |
 | VII — Translation Pipeline | ✓ | ✓ v0.1 | v0.1 library (validators working) | Library v0.1 |
 | VIII — QA Sensors | ✓ | ✓ v0.1 | examples | Pattern-grade |

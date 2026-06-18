@@ -1,4 +1,4 @@
-# Pattern V — Companion as Transmission Architecture
+# Pattern V — AI Companion as Transmission Architecture
 
 *The AI companion as architectural guide, not chatbot. The first scaled solution to personalised integral knowledge transmission.*
 
