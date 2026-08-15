@@ -12,7 +12,7 @@ The harness enforces the protocol invariants from §4 of the SPEC:
 - Refusal-direction stripped (validated by the model selection)
 - No telemetry (no outbound calls beyond model and update)
 - Practitioner-initiated update (update() must be called explicitly)
-- Open source (this file is AGPL-3.0)
+- Open source (this file is public domain, CC0-1.0)
 """
 from __future__ import annotations
 

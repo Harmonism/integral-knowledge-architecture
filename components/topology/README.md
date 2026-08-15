@@ -33,4 +33,4 @@ A *doctrinal* validator that applies the three tests (completeness, non-redundan
 
 ## License
 
-Schema and example: CC-BY-4.0.
+Public domain (CC0-1.0), per the umbrella `../../LICENSE`. No rights reserved.

@@ -42,9 +42,12 @@ Each pattern is a problem class plus a solution pattern, validated against the p
 harmonia-architecture/
 ├── README.md                          # This file
 ├── METHODOLOGY.md                     # The thirteen patterns at full articulation
-├── LICENSE                            # AGPL-3.0 for code
-├── LICENSE-METHODOLOGY                # CC-BY-4.0 for methodology and schemas
+├── LICENSE                            # CC0-1.0 — public domain, whole repository
+├── NOTICE.md                          # Why there is no licence
 ├── CHANGELOG.md
+│
+├── deployments/                       # Harmonia's own running systems, published for audit
+│   └── munai-php/                     # Not a reference implementation — see its README
 │
 ├── patterns/                          # Per-pattern adoption notes
 │   ├── i-fractal-topology/
@@ -79,7 +82,7 @@ Three honest tiers, ordered by leverage.
 
 **Schema adoption.** The schemas under `components/*/schema/` are JSON Schemas and YAML conventions that any vault can adopt to interoperate with the methodology's reference tooling. Classification metadata, glossary governance, translation manifest, sensor task descriptors — all are tradition-neutral.
 
-**Component adoption.** The full reference implementations in `components/` are open-source code (AGPL-3.0). Adopt them directly, fork them, or implement against their interfaces in your own language. SDIP is the most mature component (v0.1 ships today); translation, classification, topology, sensors, and instruction are scaffolded with schemas plus stubs at v0.1.
+**Component adoption.** The full reference implementations in `components/` are public domain (CC0-1.0). Adopt them directly, fork them, or implement against their interfaces in your own language. SDIP is the most mature component (v0.1 ships today); translation, classification, topology, sensors, and instruction are scaffolded with schemas plus stubs at v0.1.
 
 ## Maturity Status by Pattern
 
@@ -101,10 +104,13 @@ Three honest tiers, ordered by leverage.
 
 ## Licensing
 
-- **Methodology document, JSON schemas, YAML conventions, per-pattern docs:** [CC-BY-4.0](./LICENSE-METHODOLOGY). Adopt and adapt freely with attribution.
-- **Code in `components/*/` (Python implementations, scripts, linters):** [AGPL-3.0](./LICENSE). Preserve the open-source invariant downstream.
+Everything here — methodology, specification, schemas, YAML conventions, per-pattern documentation, and all reference-implementation code — is dedicated to the public domain under [CC0-1.0](./LICENSE). No rights reserved. Copy it, fork it, modify it, sell it, close it, relicense it, claim it as your own.
 
-The asymmetric license is structural: the methodology's value is in its adoption, so the spec layer is permissive. The harness code carries the architectural invariants (no telemetry, sovereign substrate, open source) that AGPL-3.0 keeps preserved through network-deployed forks.
+Attribution is appreciated where the coherence of transmission depends on it — where a reader meeting your version should be able to follow the lineage back to source. It is not required where the substance has been integrated into your own work and stands on its own. The discipline is editorial, not legal.
+
+This supersedes the AGPL-3.0 / CC-BY-4.0 split of v0.1.0 and v0.2.0. The reasoning is in [`NOTICE.md`](./NOTICE.md).
+
+Two things are absent from this repository and are not commons: credentials, and practitioner data. Those belong to their holders.
 
 ## Contributing
 

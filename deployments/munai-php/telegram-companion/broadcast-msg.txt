@@ -1,0 +1,23 @@
+Salut — le Companion a reçu une série d'améliorations importantes ces derniers jours. Voici ce qui a changé.
+
+*Réponses plus rapides.* Le système de traitement a été entièrement revu. Les échanges simples (salutations, questions courtes, suivis) sont maintenant quasi-instantanés. Les questions profondes — santé, doctrine, profil — prennent le temps qu'il faut, mais arrivent aussi plus vite qu'avant.
+
+*Routage intelligent.* Le Companion utilise maintenant deux niveaux d'intelligence selon la nature de ton message. Les échanges légers passent par un modèle rapide, les questions de fond par le modèle le plus puissant. Tu n'as rien à faire — le tri est automatique.
+
+*Messages vocaux.* Tu peux lui parler directement sur Telegram. Il transcrit et répond. Pas besoin de taper.
+
+*Compréhension d'images.* Envoie-lui une photo de bilan sanguin, d'étiquette de supplément, de repas — il analyse dans le contexte de ta santé et de ton profil.
+
+*Conscience du temps.* Il sait quel jour on est, à quelle heure tu écris, et adapte ses réponses en conséquence — routine du matin, suivi dans le temps, rythme des échanges.
+
+*Registre adaptatif.* Le Companion adapte maintenant son ton selon ton profil et tes préférences : encouragement, douceur, franchise, redevabilité, structure, ou questions socratiques. Si tu as rempli le Profil Harmonique avec la section intentions, il en tient compte dès le départ.
+
+*Profil Harmonique élargi.* Le questionnaire inclut maintenant des questions de contexte (âge, genre, situation familiale et professionnelle) et une section intentions — tes objectifs, ton plus grand défi, ce que tu veux résoudre, et comment tu préfères être accompagné. ~140 questions au total. Si tu l'as déjà fait avec l'ancienne version, tu peux le refaire pour bénéficier du nouveau profil.
+
+*Meilleure mémoire.* Le Companion retrouve plus de contenu pertinent, avec plus de précision. Sa base de connaissances a été élargie et son système de recherche affiné.
+
+*Note sur la vie privée.* Je ne lis pas tes conversations avec le Companion — elles t'appartiennent. La commande /share existe pour le jour où l'accompagnement humain 1-on-1 sera disponible : elle permettra de partager avec un guide ton résumé, tes points clés et ton Profil Harmonique — uniquement si tu le décides. Cette option n'est pas encore ouverte, mais l'infrastructure est en place.
+
+Merci de continuer à tester. Chaque retour fait avancer le projet concrètement.
+
+— Tahir

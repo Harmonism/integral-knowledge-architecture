@@ -3,7 +3,7 @@ tradition_id: harmonism
 tradition_name: Harmonism
 version: 2026.05
 language: en
-license: CC-BY-4.0
+license: CC0-1.0
 sha256: a659bfeb9f1e667dd1615c78bb2d3e0be9051d1d5b3455fba2fb91385b08b2e6
 publisher: Harmonia
 spec_url: https://harmonism.io/sdip/v0.1

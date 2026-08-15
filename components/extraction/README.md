@@ -54,4 +54,4 @@ Spec-grade at v0.1. The methodology and schema are articulated. Examples demonst
 
 ## License
 
-Schema, examples, documentation: CC-BY-4.0. Reference implementation code, when added, will be AGPL-3.0.
+Public domain (CC0-1.0), per the umbrella `../../LICENSE` — schema, examples, documentation, and any code added here. No rights reserved.

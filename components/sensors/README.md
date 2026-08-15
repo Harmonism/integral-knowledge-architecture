@@ -51,4 +51,4 @@ Pattern-grade at v0.1. The methodology is articulated, the descriptor schema is 
 
 ## License
 
-Schema and examples: CC-BY-4.0.
+Public domain (CC0-1.0), per the umbrella `../../LICENSE`. No rights reserved.

@@ -1,0 +1,23 @@
+Hey — the Companion has received a series of important upgrades over the past few days. Here's what changed.
+
+*Faster responses.* The processing system has been completely reworked. Simple exchanges (greetings, short questions, follow-ups) are now near-instant. Deep questions — health, doctrine, profile — take the time they need, but also arrive faster than before.
+
+*Intelligent routing.* The Companion now uses two levels of intelligence depending on the nature of your message. Light exchanges go through a fast model, substantive questions through the most powerful one. You don't need to do anything — the sorting is automatic.
+
+*Voice messages.* You can speak to it directly on Telegram. It transcribes and responds. No need to type.
+
+*Image understanding.* Send it a photo of a blood panel, a supplement label, a meal — it analyses it in the context of your health and your profile.
+
+*Time awareness.* It knows what day it is, what time you're writing, and adapts accordingly — morning routines, follow-ups over time, pacing of exchanges.
+
+*Adaptive register.* The Companion now adapts its tone based on your profile and preferences: encouragement, gentleness, directness, accountability, structure, or Socratic questioning. If you filled out the Harmonic Profile with the intentions section, it takes that into account from the start.
+
+*Expanded Harmonic Profile.* The assessment now includes context questions (age, gender, family and work situation) and an intentions section — your goals, your biggest challenge, what you want to resolve, and how you prefer to be guided. ~140 questions total. If you already took the old version, you can retake it to benefit from the new profile.
+
+*Better memory.* The Companion retrieves more relevant content, with greater precision. Its knowledge base has been expanded and its retrieval system refined.
+
+*A note on privacy.* I don't read your conversations with the Companion — they belong to you. The /share command exists for when 1-on-1 human guidance becomes available: it will let you share your summary, key points, and Harmonic Profile with a guide — only if you choose to. This option isn't open yet, but the infrastructure is in place.
+
+Thanks for continuing to test. Every piece of feedback moves the project forward concretely.
+
+— Tahir

@@ -7,9 +7,9 @@
   "version": "2026.05",
   "language_primary": "en",
   "languages": ["en", "fr", "es", "ar", "pt", "de", "zh", "ja", "hi", "ru"],
-  "license_corpus": "CC-BY-4.0",
-  "license_harness": "AGPL-3.0-or-later",
-  "license_spec": "CC-BY-4.0",
+  "license_corpus": "CC0-1.0",
+  "license_harness": "CC0-1.0",
+  "license_spec": "CC0-1.0",
   "publisher": {
     "name": "Harmonia",
     "url": "https://harmonism.io",

@@ -7,8 +7,8 @@
   "version": "2026.05",
   "language_primary": "en",
   "license_corpus": "CC0-1.0",
-  "license_harness": "AGPL-3.0-or-later",
-  "license_spec": "CC-BY-4.0",
+  "license_harness": "CC0-1.0",
+  "license_spec": "CC0-1.0",
   "publisher": {
     "name": "Example Publisher",
     "url": "https://example.invalid",

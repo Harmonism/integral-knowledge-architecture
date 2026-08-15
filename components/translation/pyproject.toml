@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Dual-validation translation pipeline with glossary governance. Pattern VII reference implementation of the Integral Knowledge Architecture methodology."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "AGPL-3.0-or-later" }
+license = { text = "CC0-1.0" }
 authors = [
     { name = "Harmonia", email = "harmonia@harmonism.io" }
 ]
@@ -20,7 +20,7 @@ keywords = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

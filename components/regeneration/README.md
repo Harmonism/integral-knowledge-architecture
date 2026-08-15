@@ -4,7 +4,7 @@ Hash-manifest incremental regeneration. Implements Pattern XII of the [Integral 
 
 ## What This Is
 
-The schema, examples, and (forthcoming) Python library for the Living X family of canonical-regeneration pipelines — Living Book, Living Podcast, Living Video, Living Papers, Living System. The production implementations live in the Harmonia website repository (AGPL-3.0) and run continuously against the Harmonist corpus; this directory carries the architectural primitives extracted for tradition-neutral adoption.
+The schema, examples, and (forthcoming) Python library for the Living X family of canonical-regeneration pipelines — Living Book, Living Podcast, Living Video, Living Papers, Living System. The production implementations live in the Harmonia website repository (CC0-1.0) and run continuously against the Harmonist corpus; this directory carries the architectural primitives extracted for tradition-neutral adoption.
 
 ## The Hash Manifest
 
@@ -29,7 +29,7 @@ The unchanged sections of an MP3 stay byte-identical. The unchanged HTML chapter
 
 These run in the Harmonia website repository. Their architectures generalize cleanly to other traditions; the code itself is tightly coupled to the Harmonia stack and is being extracted for standalone use over coming quarters.
 
-- **Living Podcast** — Python script at `harmonia-astro/scripts/tts-smart-update.py`. Provider: xAI Grok TTS (Leo/Ara/Sal voices). Manifest at `~/Documents/Audio/Harmonia/{slug}_{lang}/{slug}_{lang}_manifest.json`. Pronunciation overrides per language. Voice-change behavior keyed to content-only hash (changing voice does not trigger regen; use `--force` or rm manifest for that).
+- **Living Podcast** — Python script at `harmonia-astro/scripts/tts-smart-update.py`. Provider: xAI Grok TTS (Leo/Ara/Sal voices). Manifest at `~/Documents/vault/Audio/Harmonia/{slug}_{lang}/{slug}_{lang}_manifest.json`. Pronunciation overrides per language. Voice-change behavior keyed to content-only hash (changing voice does not trigger regen; use `--force` or rm manifest for that).
 - **Living Book** — Python script at `harmonia-astro/scripts/generate-book.py`. Six volumes × ten languages = 60 books regenerable in ~30 seconds via `scripts/generate-all-books.sh`. Single source-of-truth `BOOKS` array maps slug → part structure → chapter file paths.
 - **Living Video** — Phase B build deferred; the architectural commitment is recorded with the audio source layer (sourced from Living Podcast), the visual asset palette layer (hand-curated SVG library), and the orchestration layer (TBD, likely Remotion or FFmpeg-based) named explicitly.
 
@@ -47,4 +47,4 @@ Spec-grade at v0.1. The schema is specified. Examples are documented. The produc
 
 ## License
 
-Schema, examples, documentation: CC-BY-4.0. Reference implementation code, when ported into this directory, will be AGPL-3.0.
+Public domain (CC0-1.0), per the umbrella `../../LICENSE` — schema, examples, documentation, and any code ported here. No rights reserved.

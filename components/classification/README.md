@@ -71,4 +71,4 @@ Schema-grade at v0.1. The five-axis classification is articulated in the methodo
 
 ## License
 
-Schema and documentation: CC-BY-4.0. Linter code: AGPL-3.0 (umbrella `../../LICENSE`).
+Public domain (CC0-1.0), per the umbrella `../../LICENSE`. No rights reserved.

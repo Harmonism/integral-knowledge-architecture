@@ -70,11 +70,11 @@
     },
     "license_harness": {
       "type": "string",
-      "description": "SPDX license identifier for the bundled harness (typically AGPL-3.0-or-later)."
+      "description": "SPDX license identifier for the bundled harness (CC0-1.0 in the reference implementation)."
     },
     "license_spec": {
       "type": "string",
-      "description": "SPDX license identifier for the specification (typically CC-BY-4.0)."
+      "description": "SPDX license identifier for the specification (CC0-1.0 in the reference implementation)."
     },
     "publisher": {
       "type": "object",

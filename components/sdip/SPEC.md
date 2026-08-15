@@ -13,7 +13,7 @@ spec_version: 2026.05
 **Protocol Version:** 0.1  
 **Spec Date:** 2026-05  
 **Editor:** Harmonia  
-**License:** CC-BY-4.0 (this specification); per-component licenses below
+**License:** CC0-1.0 — public domain dedication, whole repository. No rights reserved.
 
 ---
 
@@ -116,7 +116,9 @@ The corpus **MUST** refresh only when the practitioner chooses to refresh it. Th
 
 ### 4.7 Open Source Harness
 
-The harness **MUST** be publishable, auditable, modifiable, and forkable under a license that preserves these rights downstream. AGPL-3.0 is the recommended default; other licenses satisfying the four freedoms are conforming. Closed-source harnesses are non-conforming.
+The harness **MUST** be publishable, auditable, modifiable, and forkable by the practitioner who runs it. Source **MUST** ship with the harness or be fetchable at a stable public location named in the manifest. Closed-source harnesses are non-conforming.
+
+Conformance is asserted by the conformance suite and by the lineage of implementations that pass it — not by licence enforcement. The reference implementation is dedicated to the public domain under CC0-1.0 and carries no downstream propagation clause. A fork may close its own copy; doing so simply forfeits conformance. This is a deliberate exit from the licence-as-enforcement framework rather than an oversight. An implementation that withholds source from the practitioner running it is not SDIP, whatever it is called.
 
 ---
 
@@ -159,7 +161,7 @@ tradition_id: harmonism
 tradition_name: Harmonism
 version: 2026.05
 language: en
-license: CC-BY-4.0
+license: CC0-1.0
 sha256: {hash of the file body after frontmatter}
 ---
 ```
@@ -186,7 +188,7 @@ title: {Article title}
 classification: canon | bridge | applied
 language: en
 version: 2026.05
-license: CC-BY-4.0
+license: CC0-1.0
 sha256: {hash}
 ---
 ```
@@ -332,9 +334,9 @@ The protocol is agnostic about the model implementation; it specifies the interf
   "version": "2026.05",
   "language_primary": "en",
   "languages": ["en", "fr", "es", "ar", "pt", "de", "zh", "ja", "hi", "ru"],
-  "license_corpus": "CC-BY-4.0",
-  "license_harness": "AGPL-3.0",
-  "license_spec": "CC-BY-4.0",
+  "license_corpus": "CC0-1.0",
+  "license_harness": "CC0-1.0",
+  "license_spec": "CC0-1.0",
   "publisher": {
     "name": "Harmonia",
     "url": "https://harmonism.io",

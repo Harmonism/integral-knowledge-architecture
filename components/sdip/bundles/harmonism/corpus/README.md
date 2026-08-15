@@ -6,7 +6,7 @@ The Harmonism canonical corpus is distributed via the **Sovereignty Bundle** at:
 
 The bundle contains ~270 publishable Harmonist articles in English plus translations
 in nine additional languages (fr, es, ar, pt, de, zh, ja, hi, ru). The corpus is
-licensed CC-BY-4.0 by Harmonia.
+dedicated to the public domain (CC0-1.0) by Harmonia.
 
 ## Populating the corpus
 

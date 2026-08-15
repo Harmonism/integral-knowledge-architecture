@@ -4,7 +4,7 @@
 
 *This document is the methodology in its current state of articulation. The reference implementations of individual patterns live in [`components/`](./components/) of this repository. The patterns themselves are summarised in [`patterns/`](./patterns/) with adoption notes per pattern.*
 
-*Licensed CC-BY-4.0. Adopt freely. Attribution: Harmonia, https://harmonism.io.*
+*Public domain (CC0-1.0). Adopt freely. No attribution required; appreciated where the lineage matters. Source: Harmonia, https://harmonism.io.*
 
 ---
 

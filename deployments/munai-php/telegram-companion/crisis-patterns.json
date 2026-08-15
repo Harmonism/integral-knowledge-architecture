@@ -1,0 +1,329 @@
+{
+  "version": "2026-04-19",
+  "notes": "Strong-patterns only. First-person explicit intent where possible. Optimized for low false-positive rate; false negatives acceptable — the model still engages distress via Harmonism's care guardrails. Patterns are matched via mb_strpos (case-insensitive substring containment) against a whitespace-normalized, lowercased user message. Keep phrases specific enough that they cannot plausibly appear in a venting, idiomatic, or third-person-discussion context.",
+  "categories": {
+    "active_suicidal_ideation": {
+      "severity": "critical",
+      "patterns": {
+        "en": [
+          "i want to kill myself",
+          "i'm going to kill myself",
+          "im going to kill myself",
+          "i will kill myself",
+          "i am going to kill myself",
+          "planning to kill myself",
+          "plan to kill myself",
+          "i want to end my life",
+          "i'm going to end my life",
+          "im going to end my life",
+          "i will end my life",
+          "planning to end my life",
+          "plan to end my life",
+          "i want to take my own life",
+          "i'm going to take my own life",
+          "im going to take my own life",
+          "i will take my own life",
+          "i want to commit suicide",
+          "i'm going to commit suicide",
+          "im going to commit suicide",
+          "i want to die tonight",
+          "i want to die today",
+          "i'm ready to die",
+          "im ready to die",
+          "i have a suicide plan",
+          "i've made a suicide plan",
+          "ive made a suicide plan",
+          "i've decided to end it",
+          "ive decided to end it",
+          "i'm going to end it tonight",
+          "i'm going to end it today",
+          "i want to stop existing",
+          "i want to not exist anymore",
+          "i want to not be alive",
+          "ready to end it all",
+          "i'm about to end it",
+          "im about to end it"
+        ],
+        "fr": [
+          "je veux me tuer",
+          "je vais me tuer",
+          "je veux me suicider",
+          "je vais me suicider",
+          "je compte me suicider",
+          "je prévois de me suicider",
+          "j'ai prévu de me suicider",
+          "jai prevu de me suicider",
+          "je veux mettre fin à mes jours",
+          "je vais mettre fin à mes jours",
+          "je veux en finir avec la vie",
+          "je vais en finir ce soir",
+          "je vais en finir aujourd'hui",
+          "je vais en finir aujourdhui",
+          "j'ai un plan pour me suicider",
+          "jai un plan pour me suicider",
+          "je veux mourir ce soir",
+          "je veux mourir aujourd'hui",
+          "je veux mourir aujourdhui",
+          "je n'ai plus envie de vivre",
+          "je nai plus envie de vivre",
+          "je ne veux plus vivre",
+          "je suis prêt à mourir",
+          "je suis prete a mourir",
+          "je suis pret a mourir"
+        ],
+        "es": [
+          "quiero matarme",
+          "voy a matarme",
+          "quiero suicidarme",
+          "voy a suicidarme",
+          "planeo suicidarme",
+          "estoy planeando suicidarme",
+          "quiero acabar con mi vida",
+          "voy a acabar con mi vida",
+          "quiero terminar con mi vida",
+          "voy a terminar con mi vida",
+          "quiero poner fin a mi vida",
+          "voy a poner fin a mi vida",
+          "tengo un plan para suicidarme",
+          "quiero morir esta noche",
+          "quiero morir hoy",
+          "ya no quiero vivir",
+          "no quiero seguir viviendo",
+          "estoy listo para morir",
+          "estoy lista para morir"
+        ],
+        "ar": [
+          "أريد أن أقتل نفسي",
+          "سأقتل نفسي",
+          "سوف أقتل نفسي",
+          "أنا سأقتل نفسي",
+          "أريد الانتحار",
+          "سأنتحر",
+          "سوف أنتحر",
+          "أريد أن أنهي حياتي",
+          "سأنهي حياتي",
+          "أريد أن أموت الليلة",
+          "أريد أن أموت اليوم",
+          "لم أعد أريد أن أعيش",
+          "لا أريد أن أعيش بعد الآن",
+          "عندي خطة للانتحار",
+          "لدي خطة للانتحار"
+        ]
+      }
+    },
+    "self_harm": {
+      "severity": "critical",
+      "patterns": {
+        "en": [
+          "i'm cutting myself",
+          "im cutting myself",
+          "i cut myself tonight",
+          "i cut myself today",
+          "i just cut myself",
+          "i've been cutting myself",
+          "ive been cutting myself",
+          "i want to cut myself",
+          "i'm going to cut myself",
+          "im going to cut myself",
+          "i'm burning myself",
+          "im burning myself",
+          "i just burned myself on purpose",
+          "i want to hurt myself",
+          "i'm going to hurt myself",
+          "im going to hurt myself",
+          "i just hurt myself on purpose",
+          "i keep hurting myself",
+          "i'm harming myself",
+          "im harming myself"
+        ],
+        "fr": [
+          "je me coupe",
+          "je viens de me couper",
+          "je me suis coupé",
+          "je me suis coupee",
+          "je veux me couper",
+          "je vais me couper",
+          "je me brûle",
+          "je me brule",
+          "je viens de me brûler exprès",
+          "je viens de me bruler expres",
+          "je veux me faire du mal",
+          "je vais me faire du mal",
+          "je me fais du mal",
+          "je viens de me faire du mal"
+        ],
+        "es": [
+          "me estoy cortando",
+          "acabo de cortarme",
+          "me he cortado",
+          "quiero cortarme",
+          "voy a cortarme",
+          "me estoy quemando",
+          "me he quemado a propósito",
+          "me he quemado a proposito",
+          "quiero hacerme daño",
+          "quiero hacerme dano",
+          "voy a hacerme daño",
+          "voy a hacerme dano",
+          "me estoy haciendo daño",
+          "me estoy haciendo dano"
+        ],
+        "ar": [
+          "أجرح نفسي",
+          "جرحتُ نفسي",
+          "أريد أن أجرح نفسي",
+          "سأجرح نفسي",
+          "أحرق نفسي",
+          "أريد أن أؤذي نفسي",
+          "سأؤذي نفسي",
+          "أذيتُ نفسي"
+        ]
+      }
+    },
+    "acute_dissociation": {
+      "severity": "high",
+      "patterns": {
+        "en": [
+          "nothing feels real right now",
+          "nothing feels real anymore",
+          "i don't feel real",
+          "i dont feel real",
+          "i feel like i'm not real",
+          "i feel like im not real",
+          "i'm watching myself from outside",
+          "im watching myself from outside",
+          "i feel outside my body",
+          "i'm outside my body",
+          "im outside my body",
+          "i can't feel my body",
+          "i cant feel my body",
+          "i don't know who i am anymore",
+          "i dont know who i am anymore",
+          "i'm losing touch with reality",
+          "im losing touch with reality"
+        ],
+        "fr": [
+          "rien ne semble réel",
+          "rien ne semble reel",
+          "rien n'a l'air réel",
+          "je ne me sens pas réel",
+          "je ne me sens pas reel",
+          "je ne me sens pas réelle",
+          "je ne me sens pas reelle",
+          "je me regarde de l'extérieur",
+          "je me regarde de lexterieur",
+          "je me sens en dehors de mon corps",
+          "je ne sens plus mon corps",
+          "je ne sais plus qui je suis",
+          "je perds contact avec la réalité",
+          "je perds contact avec la realite"
+        ],
+        "es": [
+          "nada se siente real",
+          "nada parece real",
+          "no me siento real",
+          "me veo desde afuera",
+          "me siento fuera de mi cuerpo",
+          "no siento mi cuerpo",
+          "ya no sé quién soy",
+          "ya no se quien soy",
+          "estoy perdiendo contacto con la realidad"
+        ],
+        "ar": [
+          "لا شيء يبدو حقيقياً",
+          "لا أشعر بأنني حقيقي",
+          "أراقب نفسي من الخارج",
+          "أشعر أنني خارج جسدي",
+          "لا أشعر بجسدي",
+          "لم أعد أعرف من أنا"
+        ]
+      }
+    },
+    "intoxication_distress": {
+      "severity": "high",
+      "patterns": {
+        "en": [
+          "i took too many pills",
+          "i've taken too many pills",
+          "ive taken too many pills",
+          "i overdosed",
+          "i think i overdosed",
+          "i'm overdosing",
+          "im overdosing",
+          "i took a whole bottle",
+          "i swallowed a whole bottle",
+          "i took an overdose",
+          "i can't stop vomiting after taking"
+        ],
+        "fr": [
+          "j'ai pris trop de médicaments",
+          "jai pris trop de medicaments",
+          "j'ai fait une overdose",
+          "jai fait une overdose",
+          "je suis en overdose",
+          "j'ai avalé tout le flacon",
+          "jai avale tout le flacon",
+          "j'ai pris tout le flacon",
+          "jai pris tout le flacon"
+        ],
+        "es": [
+          "tomé demasiadas pastillas",
+          "tome demasiadas pastillas",
+          "he tomado demasiadas pastillas",
+          "tuve una sobredosis",
+          "estoy teniendo una sobredosis",
+          "me tragué todo el frasco",
+          "me trague todo el frasco"
+        ],
+        "ar": [
+          "تناولتُ حبوباً كثيرة",
+          "أخذتُ جرعة زائدة",
+          "أنا في جرعة زائدة",
+          "ابتلعتُ القارورة كلها"
+        ]
+      }
+    },
+    "child_safety": {
+      "severity": "critical",
+      "patterns": {
+        "en": [
+          "a child is being abused right now",
+          "my child is in danger right now",
+          "he is hitting the baby",
+          "she is hitting the baby",
+          "he's beating the child",
+          "hes beating the child",
+          "she's beating the child",
+          "shes beating the child",
+          "a child is being hurt right now"
+        ],
+        "fr": [
+          "un enfant est maltraité maintenant",
+          "un enfant est maltraite maintenant",
+          "mon enfant est en danger maintenant",
+          "il frappe le bébé",
+          "il frappe le bebe",
+          "elle frappe le bébé",
+          "elle frappe le bebe",
+          "un enfant est battu maintenant"
+        ],
+        "es": [
+          "un niño está siendo abusado ahora",
+          "un nino esta siendo abusado ahora",
+          "mi hijo está en peligro ahora",
+          "mi hijo esta en peligro ahora",
+          "le está pegando al bebé",
+          "le esta pegando al bebe",
+          "están golpeando al niño",
+          "estan golpeando al nino"
+        ],
+        "ar": [
+          "طفل يُضرب الآن",
+          "طفل يتعرّض للإيذاء الآن",
+          "ابني في خطر الآن",
+          "يضرب الطفل الآن"
+        ]
+      }
+    }
+  }
+}

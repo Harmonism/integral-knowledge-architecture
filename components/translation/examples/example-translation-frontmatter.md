@@ -6,7 +6,7 @@
 title: Logos
 classification: canon
 language: fr
-license: CC-BY-4.0
+license: CC0-1.0
 
 # REQUIRED — staleness detection
 source_hash: a659bfeb9f1e667d

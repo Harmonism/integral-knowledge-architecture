@@ -40,4 +40,4 @@ See [`components/regeneration/schema/manifest.schema.json`](../../components/reg
 
 ## Status
 
-Spec-grade at v0.1. The methodology and schema are articulated; the production reference implementations (Living Book, Living Podcast, Living Video) live in the Harmonia website repository at AGPL-3.0. The standalone Python library extraction is the next-quarter target.
+Spec-grade at v0.1. The methodology and schema are articulated; the production reference implementations (Living Book, Living Podcast, Living Video) live in the Harmonia website repository, public domain (CC0-1.0). The standalone Python library extraction is the next-quarter target.

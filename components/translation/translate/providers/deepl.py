@@ -2,7 +2,7 @@
 
 v0.1 STATUS: Interface and recovery-layer scaffolding in place. Full
 implementation is being ported from the Harmonia website repository
-(`i18n/scripts/translate-sync.py`, AGPL-3.0). The functions stubbed below
+(`i18n/scripts/translate-sync.py`, CC0-1.0). The functions stubbed below
 have working production code at that location; the port is a multi-day
 mechanical extraction.
 

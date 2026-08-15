@@ -82,8 +82,7 @@ sdip conformance bundles/my-tradition --model http://localhost:11434/v1
 harmonia-protocol/
 ├── README.md                          # This file
 ├── SPEC.md                            # The normative protocol specification
-├── LICENSE                            # AGPL-3.0 (harness)
-├── LICENSE-SPEC                       # CC-BY-4.0 (specification)
+├── LICENSE                            # CC0-1.0 — public domain, everything
 ├── CHANGELOG.md
 ├── pyproject.toml
 │
@@ -151,10 +150,9 @@ A serious engineer can begin from this scaffold and complete a conforming v0.1 i
 
 ## License
 
-- **Specification** (`SPEC.md`, `schemas/`): CC-BY-4.0
-- **Harness code** (`sdip/`, `scripts/`, `tests/`): AGPL-3.0
-- **Reference Harmonism bundle** (`bundles/harmonism/backbone.md`, `bundles/harmonism/corpus/`): CC-BY-4.0 by Harmonia
-- **Example tradition bundle** (`bundles/example-tradition/`): CC0 (public domain placeholder, fork freely)
+Everything — specification, schemas, harness code, scripts, tests, and both reference bundles — is dedicated to the public domain under [CC0-1.0](./LICENSE). No rights reserved. Reasoning in [`../../NOTICE.md`](../../NOTICE.md).
+
+Conformance is not a licence grant. A closed harness is non-conforming by definition (SPEC § 4.7) whether or not anyone could sue over it.
 
 ## Acknowledgments
 

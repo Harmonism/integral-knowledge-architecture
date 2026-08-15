@@ -14,7 +14,7 @@ recovery layer. See PIPELINE.md § 5 for the full failure-mode catalogue.
 v0.1 status: provider interfaces defined, stubs in place documenting the
 failure modes and recovery primitives. The full production-grade provider
 implementations are being ported from the Harmonia website repository
-(`i18n/scripts/translate-sync.py`, AGPL-3.0) module-by-module.
+(`i18n/scripts/translate-sync.py`, CC0-1.0) module-by-module.
 """
 from translate.providers.base import (
     Provider,

@@ -181,7 +181,7 @@ The next-quarter operational target for this component directory: port `translat
 
 ## 9. References
 
-- Harmonia website repository: `harmonia-astro/i18n/scripts/translate-sync.py` (production reference, AGPL-3.0)
+- Harmonia website repository: `harmonia-astro/i18n/scripts/translate-sync.py` (production reference, CC0-1.0)
 - DeepL API documentation: https://developers.deepl.com/docs
 - Groq API documentation: https://console.groq.com/docs
 - The Harmonism `glossary.yaml` instance: [`../sdip/bundles/harmonism/glossary.yaml`](../sdip/bundles/harmonism/glossary.yaml)

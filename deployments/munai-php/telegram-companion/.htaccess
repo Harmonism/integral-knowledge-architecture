@@ -1,0 +1,36 @@
+# Telegram Companion — .htaccess
+# Override parent-level HTTP Basic Auth so Telegram webhooks can reach the bot.
+# Without this, Telegram gets 401 and the bot is silent.
+
+# ─── DISABLE PARENT AUTH (critical for webhook access) ───
+AuthType None
+Require all granted
+Satisfy any
+
+# ─── PROTECT SENSITIVE FILES ───
+
+# Deny access to SQLite databases
+<FilesMatch "\.(db|sqlite|sqlite3)$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to error logs
+<FilesMatch "\.log$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to Python scripts
+<FilesMatch "\.py$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to config templates
+<FilesMatch "template\.php$">
+    Require all denied
+</FilesMatch>
+
+# Allow only telegram-bot.php to be called externally
+# The memory and RAG files are included by PHP, not accessed directly
+<FilesMatch "^(telegram-memory|telegram-rag)\.php$">
+    Require all denied
+</FilesMatch>

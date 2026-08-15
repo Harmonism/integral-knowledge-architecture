@@ -40,7 +40,7 @@ Each translation provider has a fingerprint of failure modes. The architecture c
 
 1. Author your glossary YAML following [`schema/glossary.schema.json`](./schema/glossary.schema.json).
 2. Identify your provider mix per language — DeepL where supported, alternative where not, Claude/Anthropic for register-sensitive batches.
-3. Implement the dual-validation pipeline. The architecture is fully specified at [`PIPELINE.md`](./PIPELINE.md); the Harmonia reference is ~2,000 lines of Python at `i18n/scripts/translate-sync.py` in the Harmonia website repo (AGPL-3.0).
+3. Implement the dual-validation pipeline. The architecture is fully specified at [`PIPELINE.md`](./PIPELINE.md); the Harmonia reference is ~2,000 lines of Python at `i18n/scripts/translate-sync.py` in the Harmonia website repo (CC0-1.0).
 4. Run staleness + terminology checks on every translation pass. Flag, don't auto-correct.
 
 ## Status
@@ -49,4 +49,4 @@ Spec-grade at v0.1. The methodology is articulated, the schemas are specified, t
 
 ## License
 
-The schemas and architecture document are CC-BY-4.0 (see [`../../LICENSE-METHODOLOGY`](../../LICENSE-METHODOLOGY)). Reference implementation code, when ported into this directory, will be AGPL-3.0 per the umbrella [`../../LICENSE`](../../LICENSE).
+Public domain (CC0-1.0) per the umbrella [`../../LICENSE`](../../LICENSE), schemas and code alike. No rights reserved.

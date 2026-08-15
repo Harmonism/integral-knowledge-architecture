@@ -39,4 +39,4 @@ Pattern-grade. The architecture is articulated; the template provides a starting
 
 ## License
 
-Template and documentation: CC-BY-4.0.
+Public domain (CC0-1.0), per the umbrella `../../LICENSE`. No rights reserved.

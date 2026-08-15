@@ -16,8 +16,8 @@ VALID_MANIFEST = {
     "tradition_name": "Test Tradition",
     "version": "2026.05",
     "language_primary": "en",
-    "license_corpus": "CC-BY-4.0",
-    "license_harness": "AGPL-3.0-or-later",
+    "license_corpus": "CC0-1.0",
+    "license_harness": "CC0-1.0",
     "publisher": {"name": "Test Publisher"},
     "integrity": {
         "backbone_sha256": "0" * 64,

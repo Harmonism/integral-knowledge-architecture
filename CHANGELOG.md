@@ -6,6 +6,49 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Met
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-15 — The Licence Exits
+
+The AGPL-3.0 / CC-BY-4.0 split is retired. The whole repository — methodology, specification,
+schemas, per-pattern documentation, reference-implementation code, and both SDIP bundles — is
+dedicated to the public domain under CC0-1.0. No rights reserved, no attribution required.
+
+The reasoning is in `NOTICE.md` and is doctrinal rather than strategic. Copyleft enforces the
+four freedoms through copyright, and Harmonia has publicly renounced pursuing copyright remedy
+(harmonism.io/transmission). A copyleft licence its holder will not invoke is a threat already
+disarmed; keeping it was theatre. Protection relocates to where the doctrine says it belongs —
+the depth of the work, the conformance suite, and the canonical surfaces.
+
+The cost is accepted openly: CC0 permits a fork to close its copy and serve it. AGPL forbade
+that. This is the same trade the Harmonist corpus already accepts.
+
+### Changed
+
+- **`LICENSE`** — AGPL-3.0 replaced with the CC0-1.0 legalcode, at the root and at `components/sdip/`.
+- **`LICENSE-METHODOLOGY`, `components/sdip/LICENSE-SPEC`** — reduced to tombstones pointing at
+  `LICENSE`. They grant nothing and restrict nothing; delete once inbound links are updated.
+- **SPEC § 4.7 (Open Source Harness)** — the invariant is preserved and its enforcement relocated.
+  The harness must still be publishable, auditable, modifiable and forkable *by the practitioner
+  who runs it*, and source must ship with it or be fetchable at a stable public location named in
+  the manifest. What changes: conformance is asserted by the conformance suite and the lineage of
+  implementations that pass it, not by licence propagation. A fork may close its copy and thereby
+  forfeit conformance.
+- **Licence metadata swept repository-wide** — both `pyproject.toml` files (`license` field and
+  trove classifier), both SDIP bundle manifests, `manifest.schema.json` field descriptions,
+  `harness.py`'s invariant comment, `test_manifest.py` fixtures, the topology and translation
+  examples, and the licence sections of every component README.
+
+### Added
+
+- **`NOTICE.md`** — why there is no licence; what replaces it; the CC0 patent caveat stated as
+  legal fact rather than posture; and the standing exclusion of credentials and practitioner data
+  from the commons.
+
+### Supersedes
+
+Decisions #836 and #839 on the licensing question, and closes the follow-through opened by
+Decision #902.
+
+
 ## [0.2.0] — 2026-06-18 — Vault-Alignment Pass
 
 Brings the published framework back into alignment with the doctrinal evolution of the source vault since the initial release. No new engineering — the change is to the methodology layer, tracking how Harmonia's own articulation of these patterns has matured.
