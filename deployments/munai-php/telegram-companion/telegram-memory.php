@@ -109,6 +109,19 @@ class CompanionMemory {
             // Column already exists — safe to ignore
         }
 
+        // Migration: MunAI Core version stamping (August 2026 corpus audit).
+        // Every assistant row records which MunAI produced it — the declared
+        // Core semver, the resolved model ID, and an 8-char hash of the static
+        // system-prompt prefix (persona + doctrinal backbone: everything before
+        // CACHE_BREAKPOINT_MARKER). The semver is the label; the hash is the
+        // ground truth, and it makes drift between the two surfaces visible in
+        // the data rather than only in the deploy log. Without this, no change
+        // to MunAI can be evaluated against the corpus afterwards — the model
+        // moved from opus-4-6 to opus-4-7 mid-corpus with nothing recording it.
+        try { $this->db->exec('ALTER TABLE messages ADD COLUMN core_version TEXT DEFAULT NULL'); } catch (PDOException $e) {}
+        try { $this->db->exec('ALTER TABLE messages ADD COLUMN model TEXT DEFAULT NULL'); } catch (PDOException $e) {}
+        try { $this->db->exec('ALTER TABLE messages ADD COLUMN prompt_hash TEXT DEFAULT NULL'); } catch (PDOException $e) {}
+
         // Unique index to prevent duplicate storage from Telegram webhook retries
         $this->db->exec('
             CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_dedup
@@ -399,6 +412,26 @@ class CompanionMemory {
         // Migration: add image_data column for multimodal support (Decision #399)
         try {
             $this->db->exec('ALTER TABLE response_queue ADD COLUMN image_data TEXT DEFAULT NULL');
+        } catch (PDOException $e) {
+            // Column already exists — expected on subsequent runs
+        }
+
+        // Migration: burst coalescing (August 2026 corpus audit).
+        //
+        // The audit measured 123 places where MunAI sent two or more answers
+        // with no practitioner turn between them. 113 of those followed a
+        // multi-message burst: the webhook enqueued one job per inbound Telegram
+        // message, and each job answered its own fragment from a history
+        // snapshot that did not contain its siblings' answers. The practitioner
+        // sent one thought in three messages and received three replies,
+        // frequently contradicting each other.
+        //
+        // not_before holds a job out of the claimable set until the burst window
+        // has elapsed. Each new message in a burst supersedes the pending job
+        // and restarts the window, so the burst collapses into one job whose
+        // history contains every message in it.
+        try {
+            $this->db->exec('ALTER TABLE response_queue ADD COLUMN not_before INTEGER DEFAULT 0');
         } catch (PDOException $e) {
             // Column already exists — expected on subsequent runs
         }
@@ -772,7 +805,7 @@ class CompanionMemory {
      * For user messages, pass the Telegram message_id to prevent duplicate storage
      * from webhook retries. Returns false if the message was already stored (duplicate).
      */
-    public function addMessage(int $telegramId, string $role, string $content, ?int $telegramMessageId = null): bool {
+    public function addMessage(int $telegramId, string $role, string $content, ?int $telegramMessageId = null, ?array $stamp = null): bool {
         // Defensive scrub for assistant messages: strip any leading metadata
         // prefix the model might mirror despite system-prompt instruction.
         // Two patterns:
@@ -816,9 +849,17 @@ class CompanionMemory {
         // retries both pass the SELECT check above, the unique index on
         // (telegram_id, telegram_message_id) causes the second INSERT to silently fail.
         $stmt = $this->db->prepare('
-            INSERT OR IGNORE INTO messages (telegram_id, role, content, timestamp, telegram_message_id) VALUES (?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO messages
+                (telegram_id, role, content, timestamp, telegram_message_id,
+                 core_version, model, prompt_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ');
-        $stmt->execute([$telegramId, $role, $content, time(), $telegramMessageId]);
+        $stmt->execute([
+            $telegramId, $role, $content, time(), $telegramMessageId,
+            $stamp['core_version'] ?? null,
+            $stamp['model']        ?? null,
+            $stamp['prompt_hash']  ?? null,
+        ]);
 
         // If INSERT OR IGNORE was suppressed by the unique constraint, no row was inserted
         if ($this->db->lastInsertId() == 0 && $telegramMessageId !== null) {
@@ -2024,11 +2065,12 @@ class CompanionMemory {
      * then queues instead of calling Claude directly.
      * Returns the queue job ID.
      */
-    public function queueResponse(int $chatId, string $systemPrompt, array $history, bool $doProfileLearning, bool $doConsolidation, ?string $model = null, ?array $imageData = null): int {
+    public function queueResponse(int $chatId, string $systemPrompt, array $history, bool $doProfileLearning, bool $doConsolidation, ?string $model = null, ?array $imageData = null, int $burstWindowSec = 0): int {
         $stmt = $this->db->prepare('
-            INSERT INTO response_queue (chat_id, system_prompt, history, do_profile_learning, do_consolidation, model, image_data, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO response_queue (chat_id, system_prompt, history, do_profile_learning, do_consolidation, model, image_data, created_at, not_before)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ');
+        $now = time();
         $stmt->execute([
             $chatId,
             $systemPrompt,
@@ -2037,9 +2079,84 @@ class CompanionMemory {
             $doConsolidation ? 1 : 0,
             $model,
             $imageData ? json_encode($imageData) : null,
-            time()
+            $now,
+            $now + max(0, $burstWindowSec)
         ]);
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Drop any not-yet-claimed job for this chat.
+     *
+     * Called immediately before enqueueing a new one. The incoming job's history
+     * was rebuilt from the database after the new message was stored, so it
+     * already contains every message the superseded job would have answered —
+     * the older job is strictly redundant, and running it produces a second
+     * reply to what the practitioner experienced as one thought.
+     *
+     * Only 'pending' rows are touched. A job already claimed by the worker is
+     * mid-generation and will deliver; superseding it would leave the
+     * practitioner staring at an orphaned placeholder.
+     *
+     * Returns the number of jobs dropped.
+     */
+    public function supersedePendingJobs(int $chatId): int {
+        $stmt = $this->db->prepare('
+            DELETE FROM response_queue
+            WHERE chat_id = ? AND status = "pending"
+        ');
+        $stmt->execute([$chatId]);
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Has this exact text already arrived from this chat inside the window?
+     *
+     * The audit found 52 cases of a practitioner's client resending an
+     * identical message within two minutes — three copies of the same 300-char
+     * paragraph one second apart, each with its own Telegram message_id, each
+     * therefore passing the message_id dedup, each generating its own answer.
+     * Five near-identical replies to one paragraph is the result.
+     *
+     * Short messages are exempt: "ok", "yes", "hi" are legitimately repeated
+     * and carry no content worth deduplicating.
+     */
+    public function isDuplicateRecentMessage(int $chatId, string $content, int $windowSec = 120, int $minLength = 15): bool {
+        if (mb_strlen(trim($content)) <= $minLength) {
+            return false;
+        }
+        $stmt = $this->db->prepare('
+            SELECT 1 FROM messages
+            WHERE telegram_id = ? AND role = "user" AND content = ? AND timestamp >= ?
+            LIMIT 1
+        ');
+        $stmt->execute([$chatId, $content, time() - $windowSec]);
+        return (bool) $stmt->fetch();
+    }
+
+    /**
+     * Is a job for this chat queued or in flight right now?
+     *
+     * Guards the resend suppression above. A practitioner resends identical
+     * text for two very different reasons: a client double-send, where the
+     * first copy is already queued and answering the second duplicates the
+     * reply — and silence, where the first copy produced nothing and the
+     * resend is a request to be heard. The audit found both: 52 double-sends,
+     * and a 2026-05-10 outage in which a practitioner wrote three escalating
+     * appeals into a dead bot over ninety minutes and received nothing.
+     *
+     * Suppressing the second case would make that failure worse. So suppression
+     * requires an in-flight job: something is already working on it. If the
+     * queue is empty for this chat, the resend goes through and gets answered.
+     */
+    public function hasActiveJob(int $chatId): bool {
+        $stmt = $this->db->prepare('
+            SELECT 1 FROM response_queue
+            WHERE chat_id = ? AND status IN ("pending", "processing")
+            LIMIT 1
+        ');
+        $stmt->execute([$chatId]);
+        return (bool) $stmt->fetch();
     }
 
     /**
@@ -2050,13 +2167,17 @@ class CompanionMemory {
     public function claimNextJob(): ?array {
         $this->db->beginTransaction();
         try {
+            // not_before holds a job out of the claimable set until its burst
+            // window has elapsed (see the not_before migration above). Rows
+            // predating the migration carry 0 and are claimable immediately.
             $stmt = $this->db->prepare('
                 SELECT * FROM response_queue
                 WHERE status = "pending"
+                  AND (not_before IS NULL OR not_before <= ?)
                 ORDER BY created_at ASC
                 LIMIT 1
             ');
-            $stmt->execute();
+            $stmt->execute([time()]);
             $job = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$job) {
@@ -2064,11 +2185,21 @@ class CompanionMemory {
                 return null;
             }
 
-            $this->db->prepare('
+            // Status-guarded claim: if the row left 'pending' between the SELECT
+            // and here, rowCount() is 0 and we return empty-handed rather than
+            // re-claiming a job another worker already owns.
+            $claim = $this->db->prepare('
                 UPDATE response_queue
                 SET status = "processing", attempts = attempts + 1, started_at = ?
-                WHERE id = ?
-            ')->execute([time(), $job['id']]);
+                WHERE id = ? AND status = "pending"
+            ');
+            $claim->execute([time(), $job['id']]);
+
+            if ($claim->rowCount() === 0) {
+                $this->db->rollBack();
+                error_log("[queue] Claim lost for job #{$job['id']} (no longer pending)");
+                return null;
+            }
 
             $this->db->commit();
 

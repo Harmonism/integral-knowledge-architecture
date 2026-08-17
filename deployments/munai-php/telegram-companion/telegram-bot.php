@@ -37,6 +37,19 @@ ini_set('error_log', __DIR__ . '/companion-errors.log');
 // that was being injected into the system prompt mis-labelled as UTC.
 date_default_timezone_set('UTC');
 
+// ===== MUNAI CORE VERSION =====
+// The behavioural contract this surface delivers against. Bump when the
+// doctrinal backbone, either system prompt, the routing policy, or the memory
+// schema changes — and bump BOTH surfaces together (telegram-bot.php /
+// process-queue.php and companion-api.php carry the same constant). The
+// prompt_hash stamped beside it on every assistant row is the ground truth: two
+// surfaces declaring the same Core while carrying different hashes have
+// drifted, and the data will say so. Release ladder lives in the vault.
+// 0.9.0 = pre-reliability-contract.
+if (!defined('MUNAI_CORE_VERSION')) {
+    define('MUNAI_CORE_VERSION', '0.9.0');
+}
+
 // ===== LOAD DEPENDENCIES =====
 require_once __DIR__ . '/telegram-memory.php';
 require_once __DIR__ . '/telegram-rag.php';
@@ -381,6 +394,28 @@ $preemptedOutreach = $memory->preemptPendingOutreach($chatId);
 // mark it responded and reset the no-response streak counter.
 $memory->trackOutreachResponse($chatId);
 
+// ===== CONTENT-LEVEL RESEND GUARD (August 2026 corpus audit) =====
+// The message_id dedup below only catches Telegram redelivering the SAME
+// update. It does not catch a practitioner's client sending identical text as
+// three distinct messages one second apart — which the audit found 52 times,
+// each burst producing three to five near-identical answers to one paragraph.
+// Checked BEFORE the message is stored, or the query would match its own row.
+// Photo-caption placeholders are exempt: two different photos legitimately
+// carry the same placeholder text and must each be seen.
+// Suppression additionally requires a job already in flight for this chat.
+// A resend into silence — the 2026-05-10 outage pattern, where a practitioner
+// wrote "Tu m'entends?" / "MunAI???" / "Réponds!" into a dead bot — must still
+// be answered. Only a resend on top of work already underway is dropped.
+if (!$imageData
+    && $text !== '[The person sent a photo for you to analyze.]'
+    && method_exists($memory, 'isDuplicateRecentMessage')
+    && method_exists($memory, 'hasActiveJob')
+    && $memory->isDuplicateRecentMessage($chatId, $text)
+    && $memory->hasActiveJob($chatId)) {
+    error_log("[dedup] Identical text resent for chat {$chatId} while a job is in flight — not answered a second time");
+    exit;
+}
+
 // ===== STORE USER MESSAGE (with deduplication) =====
 // Pass Telegram message_id to prevent duplicate storage from webhook retries.
 // If this message was already stored (retry), skip all processing.
@@ -445,7 +480,16 @@ if (function_exists('detectCrisis')) {
 
             // Store the assistant response so conversation continuity is preserved.
             try {
-                $memory->addMessage($chatId, 'assistant', $crisisResponse, null);
+                // model = 'crisis-template': no model call is made on this
+                // path. Stamping it honestly means the corpus shows at a glance
+                // which crisis replies were deterministic broadcasts and which
+                // were reasoned — a distinction the August 2026 audit had to
+                // reconstruct from absent usage_log rows.
+                $memory->addMessage($chatId, 'assistant', $crisisResponse, null, [
+                    'core_version' => MUNAI_CORE_VERSION,
+                    'model'        => 'crisis-template',
+                    'prompt_hash'  => null,
+                ]);
             } catch (\Exception $e) {
                 error_log('[crisis] assistant message store failure: ' . $e->getMessage());
             }
@@ -882,8 +926,37 @@ error_log("Classified message for chat {$chatId}: model={$selectedModel}, reason
 $doProfileLearning = ($msgCount > 0 && $msgCount % 10 === 0);
 $doConsolidation = $memory->needsConsolidation($chatId);
 
-$jobId = $memory->queueResponse($chatId, $systemPrompt, $history, $doProfileLearning, $doConsolidation, $selectedModel, $imageData);
-error_log("Queued job #{$jobId} for chat {$chatId} (model={$selectedModel}, reason={$classifyReason}, profile_learn={$doProfileLearning}, consolidate={$doConsolidation}" . ($imageData ? ", has_image=true" : "") . ")");
+// ===== BURST COALESCING (August 2026 corpus audit) =====
+// One inbound Telegram message used to mean one job and one answer. A
+// practitioner writing one thought across three messages therefore received
+// three replies, each answering a fragment from a history snapshot that did
+// not contain its siblings' answers — 113 of the 123 duplicate-answer events
+// in the corpus. Two changes collapse a burst into a single reply:
+//
+//   1. Drop any not-yet-claimed job for this chat. The history below was
+//      rebuilt after this message was stored, so it already contains
+//      everything the superseded job would have answered.
+//   2. Hold this job out of the claimable set for MUNAI_BURST_WINDOW_SEC.
+//      Another message inside that window supersedes it again and restarts
+//      the window, so the burst resolves to one job carrying all of it.
+//
+// The window is the whole cost: it is added to first-token latency on every
+// message. Tune it here. Below ~4s it stops catching real bursts; above ~10s
+// the practitioner starts to feel the wait, since the placeholder only appears
+// once the worker claims. The typing indicator fires immediately regardless.
+if (!defined('MUNAI_BURST_WINDOW_SEC')) {
+    define('MUNAI_BURST_WINDOW_SEC', 6);
+}
+
+if (method_exists($memory, 'supersedePendingJobs')) {
+    $superseded = $memory->supersedePendingJobs($chatId);
+    if ($superseded > 0) {
+        error_log("[burst] Superseded {$superseded} unclaimed job(s) for chat {$chatId} — burst coalesced into the incoming job");
+    }
+}
+
+$jobId = $memory->queueResponse($chatId, $systemPrompt, $history, $doProfileLearning, $doConsolidation, $selectedModel, $imageData, MUNAI_BURST_WINDOW_SEC);
+error_log("Queued job #{$jobId} for chat {$chatId} (model={$selectedModel}, reason={$classifyReason}, profile_learn={$doProfileLearning}, consolidate={$doConsolidation}, burst_window=" . MUNAI_BURST_WINDOW_SEC . "s" . ($imageData ? ", has_image=true" : "") . ")");
 
 // Clear crisis follow-up flag now that the acknowledgment has been queued
 // with the augmented system prompt. If the queue subsequently fails, the

@@ -45,6 +45,19 @@ define('POLL_INTERVAL_US', 500_000);  // 0.5s between queue checks
 define('MAX_RUNTIME', 3600);          // Max worker lifetime in seconds (1 hour), then exit for watchdog restart
 define('MAX_JOBS_PER_CYCLE', 10);     // Safety cap per poll cycle
 
+// ===== MUNAI CORE VERSION =====
+// The behavioural contract this surface delivers against. Bump when the
+// doctrinal backbone, either system prompt, the routing policy, or the memory
+// schema changes — and bump BOTH surfaces together (telegram-bot.php /
+// process-queue.php and companion-api.php carry the same constant). The
+// prompt_hash stamped beside it on every assistant row is the ground truth: two
+// surfaces declaring the same Core while carrying different hashes have
+// drifted, and the data will say so. Release ladder lives in the vault.
+// 0.9.0 = pre-reliability-contract.
+if (!defined('MUNAI_CORE_VERSION')) {
+    define('MUNAI_CORE_VERSION', '0.9.0');
+}
+
 // ===== STREAMING + CACHE CONSTANTS =====
 // These MUST be defined at the top of the file, before the worker loop
 // reaches any code path that calls processJob/callClaude/callClaudeStream.
@@ -473,7 +486,13 @@ function processJob(array $job, CompanionMemory $memory): void {
     // for the practitioner's own next message this only matters when
     // they reply within seconds — and on that timescale the previous
     // message's learning was almost certainly going to run regardless.
-    $memory->addMessage($chatId, 'assistant', $response);
+    // Stamp the row with the MunAI that produced it: declared Core version,
+    // resolved model ID, and a fingerprint of the static system-prompt prefix.
+    $memory->addMessage($chatId, 'assistant', $response, null, [
+        'core_version' => MUNAI_CORE_VERSION,
+        'model'        => $model,
+        'prompt_hash'  => munaiPromptHash($systemPrompt),
+    ]);
 
     // Increment Harmonia Membership 24h rolling counter (Telegram surface).
     // Done after successful Claude completion + delivery so failed turns
@@ -626,6 +645,27 @@ function stripLeadingTimestamp(string $text): string {
     return ltrim($text);
 }
 
+
+/**
+ * Fingerprint the static half of a system prompt.
+ *
+ * Hashes only the cacheable prefix — persona heredoc + doctrinal backbone,
+ * everything before CACHE_BREAKPOINT_MARKER. The dynamic suffix (this
+ * practitioner's profile, RAG retrieval, timestamps) changes every call and
+ * would drown the signal. Two messages sharing a prompt_hash came from the same
+ * doctrinal and persona layer; two that differ did not, whatever version number
+ * they declare.
+ */
+function munaiPromptHash(string $systemPrompt): string {
+    $prefix = $systemPrompt;
+    if (defined('CACHE_BREAKPOINT_MARKER')) {
+        $pos = strpos($systemPrompt, CACHE_BREAKPOINT_MARKER);
+        if ($pos !== false) {
+            $prefix = substr($systemPrompt, 0, $pos);
+        }
+    }
+    return substr(sha1($prefix), 0, 8);
+}
 
 /**
  * Release lock file.

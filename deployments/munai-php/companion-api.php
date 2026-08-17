@@ -17,6 +17,19 @@ error_reporting(E_ALL);
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/companion-errors.log');
 
+// ===== MUNAI CORE VERSION =====
+// The behavioural contract this surface delivers against. Bump when the
+// doctrinal backbone, either system prompt, the routing policy, or the memory
+// schema changes — and bump BOTH surfaces together (telegram-bot.php /
+// process-queue.php and companion-api.php carry the same constant). The
+// prompt_hash stamped beside it on every assistant row is the ground truth: two
+// surfaces declaring the same Core while carrying different hashes have
+// drifted, and the data will say so. Release ladder lives in the vault.
+// 0.9.0 = pre-reliability-contract.
+if (!defined('MUNAI_CORE_VERSION')) {
+    define('MUNAI_CORE_VERSION', '0.9.0');
+}
+
 // ===== CORS =====
 $allowedOrigins = [
     'https://harmonism.io',
@@ -656,7 +669,12 @@ if (function_exists('detectCrisis') && $lastUserMsg && !$assessmentIngested) {
                         $countryCode ?? '',
                         $crisisLang
                     );
-                    $memory->addMessage($clientId, 'assistant', $crisisResponse, $pageTitle);
+                    // model = 'crisis-template': no model call on this path.
+                    $memory->addMessage($clientId, 'assistant', $crisisResponse, $pageTitle, [
+                        'core_version' => MUNAI_CORE_VERSION,
+                        'model'        => 'crisis-template',
+                        'prompt_hash'  => null,
+                    ]);
                 } catch (\Exception $e) {
                     error_log('[crisis] log failure: ' . $e->getMessage());
                 }
@@ -1085,6 +1103,14 @@ if (file_exists($backbonePath)) {
         $systemPrompt .= "\n\n<doctrinal_backbone>\n{$backbone}\n</doctrinal_backbone>";
     }
 }
+
+// MunAI Core prompt fingerprint (August 2026 corpus audit).
+// Taken at the seam: everything above is the static layer — persona heredoc,
+// temporal framing, doctrinal backbone. Everything below is per-call (this
+// practitioner's profile, RAG retrieval, page context) and would drown the
+// signal if hashed. Mirrors munaiPromptHash() on the Telegram surface, which
+// hashes the equivalent cacheable prefix.
+$munaiPromptHash = substr(sha1($systemPrompt), 0, 8);
 
 // Inject profile context
 if ($profileContext) {
@@ -1549,7 +1575,11 @@ if ($capturedStopReason === 'max_tokens') {
 // ===== MEMORY: STORE ASSISTANT RESPONSE & PROFILE UPDATE =====
 // Anonymous sessions skip all persistence — ephemeral processing only.
 if ($memoryAvailable && $clientId && !$isAnonymous && $capturedResponse) {
-    $memory->addMessage($clientId, 'assistant', $capturedResponse, $pageTitle);
+    $memory->addMessage($clientId, 'assistant', $capturedResponse, $pageTitle, [
+        'core_version' => MUNAI_CORE_VERSION,
+        'model'        => $selectedModel ?? null,
+        'prompt_hash'  => $munaiPromptHash ?? null,
+    ]);
 
     // Increment 24h rolling rate-limit counter (Harmonia Membership).
     // Done here, after a successful Claude completion, so cap-hit turns or

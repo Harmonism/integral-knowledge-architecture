@@ -56,7 +56,28 @@ WEBSITE_DB_PATH = "domains/harmonism.io/public_html/website-companion-data.db"
 # Local paths
 LOCAL_TELEGRAM_DB = SCRIPT_DIR / "companion-data-sync.db"
 LOCAL_WEBSITE_DB = SCRIPT_DIR / "website-companion-data-sync.db"
-VAULT_ROOT = SCRIPT_DIR.parent.parent / "Vault" / "Harmonia"
+# Resolve the vault by proving the candidate carries the canonical root article.
+# The literal `parent.parent / "Vault" / "Harmonia"` broke when the vault folder
+# was renamed (July 18 2026): from telegram-companion/ that resolves to
+# <vault>/Vault/Harmonia, which did not exist — so every sync from that date
+# CREATED it and wrote practitioner notes into a decoy tree nobody read, while
+# the real clients/ directory sat frozen at April 27. See Decision #1130.
+def _resolve_vault_root() -> Path:
+    for candidate in (
+        SCRIPT_DIR.parent.parent / "Harmonia",
+        SCRIPT_DIR.parent.parent / "Vault" / "Harmonia",
+        Path.home() / "Documents" / "Vault" / "Harmonia",
+        Path.home() / "Documents" / "vault" / "Harmonia",
+    ):
+        if (candidate / "Harmonism.md").is_file():
+            return candidate
+    raise SystemExit(
+        "sync-profiles: could not locate the Harmonia vault "
+        "(no candidate contained Harmonism.md). Refusing to write notes to a "
+        "path that may not be the vault."
+    )
+
+VAULT_ROOT = _resolve_vault_root()
 CLIENTS_DIR = VAULT_ROOT / "Internal" / "Guidance" / "clients"
 CONVERSATIONS_DIR = CLIENTS_DIR / "conversations"
 
