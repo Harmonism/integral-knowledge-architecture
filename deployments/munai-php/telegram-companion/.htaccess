@@ -31,6 +31,6 @@ Satisfy any
 
 # Allow only telegram-bot.php to be called externally
 # The memory and RAG files are included by PHP, not accessed directly
-<FilesMatch "^(telegram-memory|telegram-rag)\.php$">
+<FilesMatch "^(telegram-memory|telegram-rag|companion-voice)\.php$">
     Require all denied
 </FilesMatch>

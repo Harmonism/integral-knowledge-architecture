@@ -4,7 +4,7 @@ Vault Indexer — Processes the Harmonia Obsidian vault into a SQLite database
 with full-text search for the Telegram Companion's RAG pipeline.
 
 Run locally before deployment:
-    python3 index-vault.py --vault ../../Vault/Harmonia --output vault-index.db
+    python3 index-vault.py --vault ../../Harmonia --output vault-index.db
 
 The resulting vault-index.db gets uploaded to the server alongside the PHP files.
 

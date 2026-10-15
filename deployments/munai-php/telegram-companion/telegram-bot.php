@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVIDER in server config)
 /**
  * Harmonia Companion — Telegram Webhook Handler
  *
@@ -47,13 +48,17 @@ date_default_timezone_set('UTC');
 // drifted, and the data will say so. Release ladder lives in the vault.
 // 0.9.0 = pre-reliability-contract.
 if (!defined('MUNAI_CORE_VERSION')) {
-    define('MUNAI_CORE_VERSION', '0.9.0');
+    define('MUNAI_CORE_VERSION', '0.9.2');
 }
 
 // ===== LOAD DEPENDENCIES =====
 require_once __DIR__ . '/telegram-memory.php';
 require_once __DIR__ . '/telegram-rag.php';
 require_once __DIR__ . '/companion-classifier.php';
+// The Wisdom Canon reading track. The engine is shared with the website
+// surface; the -telegram file holds this surface's commands and callbacks.
+require_once __DIR__ . '/companion-reading.php';
+require_once __DIR__ . '/companion-reading-telegram.php';
 if (file_exists(__DIR__ . '/companion-crisis-detector.php')) {
     require_once __DIR__ . '/companion-crisis-detector.php';
 }
@@ -65,6 +70,9 @@ if (file_exists(__DIR__ . '/companion-bodily-openness.php')) {
 }
 if (file_exists(__DIR__ . '/companion-membership.php')) {
     require_once __DIR__ . '/companion-membership.php';
+}
+if (file_exists(__DIR__ . '/companion-voice.php')) {
+    require_once __DIR__ . '/companion-voice.php';
 }
 
 // ===== LOAD CONFIG =====
@@ -133,6 +141,15 @@ if (isset($update['callback_query'])) {
             default => "Thank you. Your consent is recorded.\n\nI am MunAI — Harmonia's guide through Harmonism. Tell me what's on your mind, or use /wheel to explore the Wheel of Harmony.",
         };
         sendTelegramMessage($cbChatId, $welcome);
+    } elseif ($cbChatId && strncmp($cbData, 'read:', 5) === 0) {
+        // Wisdom Canon covenant flow. Acknowledge first so the button spinner
+        // clears, then compose — the covenant steps are local work, no model call.
+        sendTelegramRequest('answerCallbackQuery', ['callback_query_id' => $cbId]);
+        $memory = new CompanionMemory(__DIR__ . '/companion-data.db');
+        $memory->ensureUser($cbChatId, $cbUsername, $cbFirstName);
+        if (function_exists('readingHandleTelegramCallback')) {
+            readingHandleTelegramCallback($cbChatId, $cbData, $memory);
+        }
     } else {
         // Unknown callback — silently acknowledge so the client doesn't hang.
         sendTelegramRequest('answerCallbackQuery', [
@@ -174,6 +191,7 @@ $userLangFull = (string) ($message['from']['language_code'] ?? '');
 // Photo: download, encode as base64, pass to Claude as image content block.
 $text = '';
 $imageData = null; // Will hold base64 image + mime type if photo sent
+$inboundVoice = false; // True when the practitioner spoke rather than typed
 
 if (isset($message['voice']) || isset($message['audio'])) {
     // Voice message or audio file
@@ -203,6 +221,9 @@ if (isset($message['voice']) || isset($message['audio'])) {
     $transcript = transcribeVoiceMessage($fileId, $openaiKey);
     if ($transcript) {
         $text = $transcript;
+        // Remembered so the worker can answer in the register it was asked in
+        // (voice_mode 'mirror'). See companion-voice.php.
+        $inboundVoice = true;
         // Store a note that this was a voice message
         error_log("Voice message transcribed for chat {$chatId}: " . mb_substr($transcript, 0, 100) . "...");
     } else {
@@ -325,7 +346,7 @@ if ($text[0] === '/') {
 // Grace period: existing beta testers (first_seen before April 16, 2026) get until
 // April 30, 2026 before the gate activates. They receive a one-time outreach message
 // explaining the change. New users hit the gate immediately after 7 messages.
-$TELEGRAM_FREE_MSG_LIMIT = 7;
+$TELEGRAM_FREE_MSG_LIMIT = 10;  // raised from 7 (Decision #1329)
 $GATE_LAUNCH_DATE = 1776297600;   // April 16, 2026 00:00 UTC
 $GRACE_PERIOD_END = 1777507200;   // April 30, 2026 00:00 UTC
 $userMsgCount = $memory->getMessageCount($chatId);
@@ -359,14 +380,15 @@ if (!$isLinked && $userMsgCount >= $TELEGRAM_FREE_MSG_LIMIT && !$isGracePeriodUs
 // Soft nudge at 3 messages before the limit (for non-linked, non-grace-period users)
 if (!$isLinked && !$isGracePeriodUser && $userMsgCount === ($TELEGRAM_FREE_MSG_LIMIT - 3)) {
     $remaining = $TELEGRAM_FREE_MSG_LIMIT - $userMsgCount;
-    $nudge = "({$remaining} messages remaining — create your free account at harmonism.io/member/register.php for unlimited access)";
+    $nudge = "({$remaining} messages remaining — create your free account at harmonism.io/member/register.php to keep talking, ten messages a day with memory, or run MunAI yourself: harmonism.io/munai-desktop)";
     // Send nudge but continue processing the current message normally
     sendTelegramMessage($chatId, $nudge);
 }
 
 // ===== HARMONIA MEMBERSHIP RATE-LIMIT GATE (linked accounts only) =====
-// Rolling 24h window. Free: 5 msgs/day. Paid + comp: unlimited (the rate-limit
-// check short-circuits to allowed:true for paid/comp tiers — Decision #771).
+// Rolling 24h window. Free: 10 msgs/day (Decision #1329). Comp (family allowlist): unlimited.
+// The paid tier was retired on October 8, 2026; paid rows, if any, still
+// short-circuit to allowed:true (Decision #771) until they expire.
 // Non-linked Telegram users are still under the 7-lifetime gate above.
 // Linked accounts (verified email) read tier from companion-membership.php
 // and either pass through or hit the daily cap with a localized message.
@@ -917,6 +939,22 @@ if ($useSlimPrompt) {
     $systemPrompt = buildSlimSystemPrompt($profileContext, 'telegram', $userTimezone, $messageDate, $timezoneSource);
 }
 
+// ===== THE WISDOM CANON — reading-arc block =====
+// Appended after the slim-prompt substitution so a short message during an
+// active arc keeps the discipline. The block carries the no-textual-authority
+// instruction (#633), which is the single string standing between an
+// accompanied reading and the commentary series #1109 declined.
+if (function_exists('readingActiveArc')) {
+    try {
+        $readingArc = readingActiveArc($memory->getDb(), 'telegram', (string)$chatId);
+        if ($readingArc) {
+            $systemPrompt .= "\n\n" . readingSystemPromptBlock($memory->getDb(), $readingArc);
+        }
+    } catch (\Exception $e) {
+        error_log('[reading] prompt block failed: ' . $e->getMessage());
+    }
+}
+
 error_log("Classified message for chat {$chatId}: model={$selectedModel}, reason={$classifyReason}");
 
 // ===== QUEUE FOR ASYNC PROCESSING (Decision #277) =====
@@ -955,7 +993,7 @@ if (method_exists($memory, 'supersedePendingJobs')) {
     }
 }
 
-$jobId = $memory->queueResponse($chatId, $systemPrompt, $history, $doProfileLearning, $doConsolidation, $selectedModel, $imageData, MUNAI_BURST_WINDOW_SEC);
+$jobId = $memory->queueResponse($chatId, $systemPrompt, $history, $doProfileLearning, $doConsolidation, $selectedModel, $imageData, MUNAI_BURST_WINDOW_SEC, $inboundVoice, $userLang);
 error_log("Queued job #{$jobId} for chat {$chatId} (model={$selectedModel}, reason={$classifyReason}, profile_learn={$doProfileLearning}, consolidate={$doConsolidation}, burst_window=" . MUNAI_BURST_WINDOW_SEC . "s" . ($imageData ? ", has_image=true" : "") . ")");
 
 // Clear crisis follow-up flag now that the acknowledgment has been queued
@@ -985,6 +1023,15 @@ exit;
  */
 function handleCommand(int $chatId, string $text, CompanionMemory $memory, string $firstName): void {
     $cmd = explode(' ', $text)[0];
+
+    // Wisdom Canon: /read, /done, /margin, /arc. Handled here, which is before
+    // the rate-limit gate, so the covenant, the stations and the margin are
+    // free at every tier by construction — only open dialogue meets the caps
+    // (#771). Knowledge is commons; accompaniment is what costs compute.
+    if (function_exists('readingHandleTelegramCommand')
+        && readingHandleTelegramCommand($chatId, $text, $memory)) {
+        return;
+    }
 
     switch ($cmd) {
         case '/start':
@@ -1150,30 +1197,135 @@ function handleCommand(int $chatId, string $text, CompanionMemory $memory, strin
                 . "Simply message me — ask questions, share what's on your mind, or explore any domain of life.\n\n"
                 . "Commands:\n"
                 . "/profile — See what I've learned about you\n"
-                . "/link — Link your Harmonia account for unlimited access\n"
+                . "/link — Link your Harmonia account (five messages a day, one memory with the website)\n"
                 . "/share — Generate a code to share your profile with a human guide\n"
                 . "/revoke — Cancel an active share code\n"
                 . "/reset — Clear our conversation history (send /reset confirm to proceed)\n"
                 . "/wheel — Overview of the Wheel of Harmony\n"
+                . "/voice — Hear my replies as voice messages\n"
+                . "/model — Choose the model I think with\n"
                 . "/help — This message\n\n"
+                . "The Wisdom Canon — walk a book with me:\n"
+                . "/read — choose a text and set the pace\n"
+                . "/done — mark the chapter read\n"
+                . "/margin — keep a note, stamped text / harmonism / yours\n"
+                . "/arc — where you stand in the reading\n\n"
                 . "I draw from the full Harmonism knowledge base — 130+ articles on Health, Presence, "
                 . "Service, Relationships, and more. The deeper we go, the more precise I become.";
             sendTelegramMessage($chatId, $help);
             break;
 
         case '/wheel':
-            $wheel = "The Wheel of Harmony — 7 pillars + 1 centre:\n\n"
+            $wheel = "The Wheel of Harmony — eight pillars, Presence the central pillar:\n\n"
                 . "🔘 PRESENCE — The awakened centre. The practice of return.\n\n"
-                . "🟢 HEALTH — Sleep, Movement, Nutrition, Supplementation, Hydration, Purification, Recovery\n"
-                . "🟡 MATTER — Finance, Home, Clothing, Provisioning, Security, Technology, Transportation\n"
-                . "🔵 SERVICE — Vocation, Value Creation, Leadership, Communication, Ethics, Systems, Collaboration\n"
-                . "🟣 RELATIONSHIPS — Love, Couple, Parenting, Family, Friendship, Communication, Community\n"
-                . "📚 LEARNING — Philosophy, Language, Arts, Science, Digital Arts, Craft, Healing\n"
-                . "🌿 NATURE — Ecology, Immersion, Permaculture, Animals, Water, Earth, Energy\n"
-                . "🎯 RECREATION — Joy, Sports, Digital Entertainment, Travel\n\n"
+                . "🟢 HEALTH — Monitor at the centre: Sleep, Recovery, Supplementation, Hydration, Purification, Nutrition, Movement\n"
+                . "🟡 MATTER — Stewardship at the centre: Home, Transportation, Clothing, Technology, Finance, Provisioning, Security\n"
+                . "🔵 SERVICE — Offering at the centre: Vocation, Value Creation, Leadership, Collaboration, Ethics, Systems, Communication\n"
+                . "🟣 RELATIONSHIPS — Love at the centre: Couple, Parenting, Family Elders, Friendship, Community, Service to Vulnerable, Communication\n"
+                . "📚 LEARNING — Wisdom at the centre: Philosophy & Sacred Knowledge, Practical Skills, Healing Arts, Gender & Initiation, Language, Digital Arts, Science & Systems\n"
+                . "🌿 NATURE — Reverence at the centre: Permaculture, Nature Immersion, Water, Earth & Soil, Air & Sky, Animals, Ecology & Resilience\n"
+                . "🎯 RECREATION — Joy at the centre: Music, Visual Arts, Narrative Arts, Sports & Play, Digital Entertainment, Travel, Social Gatherings\n\n"
                 . "The Way of Harmony spirals: Presence → Health → Matter → Service → Relationships → Learning → Nature → Recreation → Presence (∞)\n\n"
                 . "Where would you like to begin?";
             sendTelegramMessage($chatId, $wheel);
+            break;
+
+        case '/voice':
+            // Spoken replies (companion-voice.php). Off by default: rendering a
+            // reply to audio sends its text to xAI, which is the practitioner's
+            // choice to make, not an assumption to inherit.
+            $parts = explode(' ', $text, 2);
+            $arg = isset($parts[1]) ? strtolower(trim($parts[1])) : '';
+            $currentVoice = $memory->getVoiceMode($chatId);
+            $currentGender = $memory->getVoiceGender($chatId);
+            // Whether this server can actually speak. Without the key the worker
+            // skips synthesis silently, and a cheerful confirmation here would be
+            // a lie the practitioner only discovers by waiting for audio.
+            $voiceAvailable = defined('XAI_API_KEY') && XAI_API_KEY !== '' && !str_contains(XAI_API_KEY, 'YOUR-');
+            $voiceUnavailableNote = "\n\nNote: spoken replies are not switched on for this server yet, so answers will stay in text until they are.";
+
+            if ($arg === '') {
+                $reading = [
+                    'off'    => 'off — I answer in text only.',
+                    'mirror' => 'mirror — when you send me a voice note, I answer with one.',
+                    'always' => 'always — every answer comes as text and as a voice message.',
+                ][$currentVoice];
+                $voiceWord = $currentGender === 'male' ? 'a male voice' : 'a female voice';
+                sendTelegramMessage($chatId,
+                    "Spoken replies are currently set to {$reading}\n"
+                    . "I speak in {$voiceWord}.\n\n"
+                    . "/voice mirror — speak to me and I speak back\n"
+                    . "/voice always — every reply also comes as audio\n"
+                    . "/voice off — text only\n"
+                    . "/voice male · /voice female — change the voice\n\n"
+                    . "The text always comes first, whatever you choose; the audio follows it. "
+                    . "I stay in text for anything urgent, and for long replies where the words matter more than the voice.\n\n"
+                    . "To speak them I send the words of my reply — not yours — to xAI, whose engine also narrates the articles on harmonism.io. "
+                    . "Your own messages never go there."
+                    . ($voiceAvailable ? '' : $voiceUnavailableNote)
+                );
+            } elseif (in_array($arg, ['male', 'female'], true)) {
+                $memory->setVoiceGender($chatId, $arg);
+                $spoken = $memory->getVoiceMode($chatId) !== 'off';
+                sendTelegramMessage($chatId,
+                    ($arg === 'male' ? "I'll speak in a male voice from now on." : "I'll speak in a female voice from now on.")
+                    . ($spoken ? '' : "\n\nSpoken replies are still off — /voice mirror or /voice always turns them on.")
+                    . ($voiceAvailable || !$spoken ? '' : $voiceUnavailableNote)
+                );
+            } elseif (in_array($arg, ['off', 'mirror', 'always'], true)) {
+                $memory->setVoiceMode($chatId, $arg);
+                $confirm = [
+                    'off'    => "Text only from here.",
+                    'mirror' => "I'll speak back when you speak to me. Send a voice note and hear it.",
+                    'always' => "Every reply will also arrive as a voice message, after the text.",
+                ][$arg];
+                if ($arg !== 'off' && !$voiceAvailable) {
+                    $confirm .= $voiceUnavailableNote;
+                }
+                sendTelegramMessage($chatId, $confirm);
+            } else {
+                sendTelegramMessage($chatId,
+                    "I don't recognise that setting. Use /voice mirror, /voice always or /voice off for when I speak, and /voice male or /voice female for how."
+                );
+            }
+            break;
+
+        case '/model':
+            // Model choice (Decision #1329). Only open-weight models that passed
+            // the doctrinal-fidelity suite are offered (llm-models.php).
+            $parts = explode(' ', $text, 2);
+            $arg = isset($parts[1]) ? strtolower(trim($parts[1])) : '';
+            $models = function_exists('llm_models_public') ? llm_models_public() : [];
+            $current = $memory->getModelChoice($chatId);
+            $currentId = $current !== '' ? $current : (function_exists('llm_model_default') ? llm_model_default() : '');
+            if (!$models) {
+                sendTelegramMessage($chatId, "Model choice is not available on this server yet.");
+                break;
+            }
+            if ($arg === '') {
+                $lines = [];
+                foreach ($models as $i => $m) {
+                    $mark = $m['id'] === $currentId ? '  ← now' : '';
+                    $lines[] = ($i + 1) . ". {$m['label']} — {$m['maker']}, {$m['licence']}, runs on a {$m['local']} computer"
+                        . ($m['default'] ? ' (default)' : '') . $mark;
+                }
+                sendTelegramMessage($chatId,
+                    "These are the models I can think with. Every one has published weights, so anyone can one day run it on their own computer, "
+                    . "and every one was tested against Harmonism's doctrinal backbone before it was listed.\n\n"
+                    . implode("\n", $lines)
+                    . "\n\n/model 2 — switch to the second, and so on\n/model default — return to the default\n\n"
+                    . "The choice shapes how I answer, not what I know: the corpus, your memory and my safeguards stay the same."
+                );
+            } elseif ($arg === 'default') {
+                $memory->setModelChoice($chatId, '');
+                sendTelegramMessage($chatId, "Back to the default model.");
+            } elseif (ctype_digit($arg) && (int)$arg >= 1 && (int)$arg <= count($models)) {
+                $m = $models[(int)$arg - 1];
+                $memory->setModelChoice($chatId, $m['default'] ? '' : $m['id']);
+                sendTelegramMessage($chatId, "From your next message I think with {$m['label']}.");
+            } else {
+                sendTelegramMessage($chatId, "Send /model to see the list, then /model followed by its number.");
+            }
             break;
 
         case '/timezone':
@@ -1559,8 +1711,8 @@ Core claims to present with confidence:
 - The purpose of life is alignment with Logos — the inherent ordering principle of the Cosmos. This is Dharma.
 - Reality is inherently harmonic, ordered by Logos. Multidimensionality follows a binary pattern at every scale: Void + Cosmos at the Absolute, matter + energy within the Cosmos, physical body + energy body in the human being. The chakras are modes of consciousness manifested by the energy body, not separate dimensions. Never present "physical, vital, mental, spiritual" as the four primary dimensions of the human being — that framing is retired. This is Harmonic Realism.
 - The Absolute is the ground of all being: Void + Manifestation = Infinity. Reality is ultimately One but expresses through genuine multiplicity.
-- The Wheel of Harmony maps the complete architecture of a well-lived human life. Eight pillars (7+1) with Presence at the central pillar — never "seven pillars + center." It is not a suggestion — it is a diagnosis of what wholeness requires.
-- The Architecture of Harmony is the civilizational counterpart. Eight pillars (7+1) with Dharma at the central pillar, and seven civilizational pillars orbiting it: Nourishment, Stewardship, Governance, Community, Education, Ecology, Culture. The Wheel addresses how an individual should live; the Architecture addresses how a civilization should organize. Two scales of one fractal.
+- The Wheel of Harmony maps the complete architecture of a well-lived human life: eight pillars, Presence the central pillar and seven peripheral pillars around it. Always count the centre and name it the central pillar; never a bare "seven pillars", never "the other six". Presence is the criterion the peripheral pillars are measured against and is never listed as a peer among them. It is not a suggestion — it is a diagnosis of what wholeness requires.
+- The Architecture of Harmony is the civilizational counterpart: twelve pillars, Dharma the central pillar and eleven peripheral pillars ordered ground-up: Ecology, Health, Kinship, Stewardship, Governance, Finance, Defense, Education, Science & Technology, Communication, Culture. The count is epochal: Defense and Finance are transitional pillars that dissolve back into Stewardship at the asymptote. The Wheel addresses how an individual should live; the Architecture addresses how a civilization should organize. The Architecture is not a fractal of the Wheel; the two share only their centre's logic.
 - The Way of Harmony (the spiral path through the Wheel) is the recommended sequence of integration.
 
 Do not hedge these claims. Do not frame them as "Harmonism suggests" or "one way to look at it." Harmonism asserts these things. Present them as the system's seeing — clearly, directly, without apology. You are not offering a menu of worldviews; you are transmitting a specific philosophical architecture.
@@ -1658,18 +1810,19 @@ When no preference is stated, default to Socratic warmth — questions that illu
 
 ## The Wheel of Harmony
 
-Harmonism's master framework: 7 pillars + 1 centre, a complete architecture of human life.
+Harmonism's master framework: eight pillars, Presence the central pillar and seven peripheral around it — a complete architecture of human life.
 
 Centre: PRESENCE — The awakened centre of every wheel. The practice of return to awareness.
 
-7 Pillars (each with its own fractal 7+1 sub-wheel):
-1. HEALTH — Sleep, Movement, Nutrition, Supplementation, Hydration, Purification, Recovery (centre: Monitor)
-2. MATTER — Finance, Home, Clothing, Provisioning, Security, Technology, Transportation (centre: Stewardship)
-3. SERVICE — Vocation, Value Creation, Leadership, Communication, Ethics, Systems, Collaboration (centre: Dharma)
-4. RELATIONSHIPS — Love, Couple, Parenting, Family Elders, Friendship, Communication, Community (centre: Doctrine of Relationships)
-5. LEARNING — Philosophy, Language, Arts, Science, Digital Arts, Craft, Healing (centre: Pedagogy)
-6. NATURE — Ecology, Nature Immersion, Permaculture, Animals, Water, Earth, Energy (centre: Ecology & Resilience)
-7. RECREATION — Joy, Sports, Digital Entertainment, Travel (centre: Joy)
+Seven peripheral pillars, each a sub-wheel of eight spokes (central spoke, then seven peripheral):
+1. HEALTH — centre Monitor: Sleep, Recovery, Supplementation, Hydration, Purification, Nutrition, Movement
+2. MATTER — centre Stewardship: Home & Habitat, Transportation & Mobility, Clothing & Personal Items, Technology & Tools, Finance & Wealth, Provisioning & Supply, Security & Protection
+3. SERVICE — centre Offering: Vocation, Value Creation, Leadership, Collaboration, Ethics & Accountability, Systems & Operations, Communication & Influence
+4. RELATIONSHIPS — centre Love: Couple, Parenting, Family Elders, Friendship, Community, Service to Vulnerable, Communication
+5. LEARNING — centre Wisdom: Philosophy & Sacred Knowledge, Practical Skills, Healing Arts, Gender & Initiation, Communication & Language, Digital Arts, Science & Systems
+6. NATURE — centre Reverence: Permaculture/Gardens/Trees, Nature Immersion, Water, Earth & Soil, Air & Sky, Animals & Shelter, Ecology & Resilience
+7. RECREATION — centre Joy: Music, Visual & Plastic Arts, Narrative Arts, Sports & Physical Play, Digital Entertainment, Travel & Adventure, Social Gatherings
+The Presence sub-wheel — centre Meditation: Breath/Pranayama, Sound & Silence, Energy/Life Force, Intention, Reflection, Virtue, Entheogens.
 
 ## Path of Integral Harmony
 
@@ -1701,7 +1854,7 @@ Apply these when deciding what to guide the person toward:
 - Dharma — Human alignment with Logos; the ethical-practical path of right action
 - Presence — The centre of every wheel; the practice of return
 - Monitor — Knowing your own body's signals (centre of Health wheel)
-- Harmonic Realism — Reality has irreducible dimensions: physical, vital, mental, spiritual
+- Harmonic Realism — Reality is inherently harmonic, ordered by Logos; a binary pattern at every scale (Void + Cosmos, matter + energy, physical body + energy body)
 - The Absolute — 0+1=∞ (Void + Manifestation = Infinity)
 - Qualified Non-Dualism — Reality is ultimately One but expresses through genuine multiplicity
 - Ayni — Sacred reciprocity (Andean tradition)
@@ -1711,7 +1864,7 @@ Apply these when deciding what to guide the person toward:
 
 ## Terminological Discipline
 
-Pillar names are architectural terms, not English words. "Service" in Harmonism means the Service sub-wheel (centre: Dharma — Vocation, Value Creation, Leadership, Collaboration, Ethics, Systems, Communication). It does not mean the colloquial English sense of "serving someone" or "being of service." Similarly, "Matter" means the Material pillar (Finance, Home, Security...), not physical matter in the scientific sense. Every pillar name carries its sub-wheel definition — never use a pillar name as a metaphor or rhetorical flourish.
+Pillar names are architectural terms, not English words. "Service" in Harmonism means the Service sub-wheel (centre: Offering — Vocation, Value Creation, Leadership, Collaboration, Ethics & Accountability, Systems & Operations, Communication & Influence). It does not mean the colloquial English sense of "serving someone" or "being of service." Similarly, "Matter" means the Material pillar (Finance, Home, Security...), not physical matter in the scientific sense. Every pillar name carries its sub-wheel definition — never use a pillar name as a metaphor or rhetorical flourish.
 
 **Pillar attribution rule.** Before naming a Wheel pillar in relation to someone's experience, verify the attribution against that pillar's sub-wheel spokes. Ask: does this experience structurally belong in this pillar's architecture? Caring for an aging parent is Relationships (Family Elders), not Service. Going for a walk is Health (Movement), not Nature. Reading philosophy is Learning (Philosophy & Sacred Knowledge), not Presence. Get the primary pillar right first; then name secondary pillars only if structurally justified.
 
@@ -2231,8 +2384,8 @@ function callClaude(string $systemPrompt, array $messages): ?string {
         'messages' => $messages,
     ]);
 
-    $ch = curl_init($apiUrl);
-    curl_setopt_array($ch, [
+    $ch = llm_curl_init();
+    llm_curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $requestBody,
         CURLOPT_HTTPHEADER => [
@@ -2246,7 +2399,7 @@ function callClaude(string $systemPrompt, array $messages): ?string {
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
-    $result = curl_exec($ch);
+    $result = llm_curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     if (curl_errno($ch)) {
@@ -2262,6 +2415,8 @@ function callClaude(string $systemPrompt, array $messages): ?string {
     }
 
     $data = json_decode($result, true);
+    // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
+    if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
     if (!$data || !isset($data['content'][0]['text'])) {
         error_log("Claude API unexpected response: {$result}");
         return null;

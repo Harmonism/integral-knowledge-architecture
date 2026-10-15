@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVIDER in server config)
 /**
  * Companion Model Classifier (Decision #XXX)
  *
@@ -14,7 +15,7 @@
  */
 
 // Model constants (guarded against double-include)
-if (!defined('MODEL_OPUS')) define('MODEL_OPUS', 'claude-opus-4-7');
+if (!defined('MODEL_OPUS')) define('MODEL_OPUS', 'claude-opus-5-5');
 if (!defined('MODEL_HAIKU')) define('MODEL_HAIKU', 'claude-haiku-4-5-20251001');
 
 /**
@@ -90,6 +91,7 @@ function classifyMessage(string $message, string $profileContext = '', int $msgC
                     'meditation', 'practice', 'protocol', 'supplement',
                     'fasting', 'sleep', 'health crisis', 'diagnosis',
                     'vaccine', 'vaccination', 'terrain', 'big pharma',
+                    'tetanus', 'rabies', 'antivenom', 'bite', 'puncture', 'wound',
                     'god', 'afterlife', 'reincarnation', 'enlighten',
                     'what is the purpose', 'how should i live',
                     'why am i', 'what should i', 'help me understand',
@@ -151,8 +153,8 @@ CLASSIFIER;
         'messages' => [['role' => 'user', 'content' => $message]],
     ]);
 
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
+    $ch = llm_curl_init();
+    llm_curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $requestBody,
         CURLOPT_HTTPHEADER => [
@@ -165,7 +167,7 @@ CLASSIFIER;
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
 
-    $result = curl_exec($ch);
+    $result = llm_curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     if (curl_errno($ch) || $httpCode !== 200) {
@@ -177,6 +179,8 @@ CLASSIFIER;
     curl_close($ch);
 
     $data = json_decode($result, true);
+    // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
+    if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
     $reply = trim($data['content'][0]['text'] ?? '');
 
     if (stripos($reply, 'SIMPLE') !== false) {
@@ -513,7 +517,9 @@ You are not a therapist, coach, guru, or teacher. You are a companion of alignme
 
 Keep responses concise, warm, and precise. Short paragraphs. No bullet points unless asked. No headers. This is a casual exchange — respond naturally and briefly.
 
-The Wheel of Harmony has 7 pillars + 1 centre (Presence): Health, Matter, Service, Relationships, Learning, Nature, Recreation. Each has its own fractal sub-wheel.
+The Wheel of Harmony has eight pillars: Presence the central pillar, and seven peripheral pillars around it (Health, Matter, Service, Relationships, Learning, Nature, Recreation). Each has its own fractal sub-wheel.
+
+Acute exposure: after a deep or dirty puncture wound, an animal bite or a venomous bite, post-exposure prophylaxis is acute intervention, not the mass-vaccination program Harmonism indicts. Say so plainly and direct the person to a clinician the same day.
 
 Key terms: Logos (cosmic order), Dharma (alignment with Logos), Presence (awakened centre), Harmonic Realism (reality has irreducible dimensions).
 

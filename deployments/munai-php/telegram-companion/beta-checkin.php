@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVIDER in server config)
 /**
  * Beta Check-In — One-Off Script
  *
@@ -209,13 +210,14 @@ SYSPROMPT;
         $apiUrl     = 'https://api.anthropic.com/v1/messages';
         $requestBody = json_encode([
             'model'      => COMPANION_MODEL,
-            'max_tokens' => 200,
+            'max_tokens' => 2048,  // ceiling covers Opus 5.5 adaptive thinking + reply; length is set by the prompt
+            'output_config' => ['effort' => 'low'],
             'system'     => $systemPrompt,
             'messages'   => $messages,
         ]);
 
-        $ch = curl_init($apiUrl);
-        curl_setopt_array($ch, [
+        $ch = llm_curl_init();
+        llm_curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $requestBody,
             CURLOPT_HTTPHEADER     => [
@@ -229,7 +231,7 @@ SYSPROMPT;
             CURLOPT_SSL_VERIFYPEER => true,
         ]);
 
-        $result   = curl_exec($ch);
+        $result   = llm_curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (curl_errno($ch)) {
@@ -245,6 +247,8 @@ SYSPROMPT;
         }
 
         $data = json_decode($result, true);
+        // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
+        if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
         if (!$data || !isset($data['content'][0]['text'])) {
             error_log("beta-checkin unexpected response: {$result}");
             return null;

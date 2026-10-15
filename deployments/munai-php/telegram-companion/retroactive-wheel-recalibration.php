@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVIDER in server config)
 /**
  * Retroactive Wheel Recalibration — one-shot CLI tool.
  *
@@ -200,7 +201,7 @@ WHEEL;
 // ===== MODEL ID MAP =====
 function resolveModelId(string $alias): string {
     switch ($alias) {
-        case 'opus':   return defined('COMPANION_MODEL') ? COMPANION_MODEL : 'claude-opus-4-7';
+        case 'opus':   return defined('COMPANION_MODEL') ? COMPANION_MODEL : 'claude-opus-5-5';
         case 'sonnet': return 'claude-sonnet-4-6';
         case 'haiku':  return 'claude-haiku-4-5-20251001';
         default:       return 'claude-sonnet-4-6';
@@ -212,12 +213,16 @@ function callClaudeApi(string $modelId, string $systemPrompt, string $userMessag
     // Prompt caching: system prompt is identical across every call in this run,
     // so wrap it as a cacheable block. First call writes at 1.25x; subsequent
     // reads within ~5 min at 0.1x. For N users back-to-back, saves ~90% on the
-    // system-prompt tokens. Opus 4.6 rejects assistant-message prefill, so we
+    // system-prompt tokens. Opus 4.6 through Opus 5 reject assistant-message prefill, so we
     // rely on the user-message JSON instruction + caller salvage regex instead.
-    $body = json_encode([
+    // `temperature` is deprecated on Opus 4.7+ and Sonnet 5 — sending it returns
+    // HTTP 400. Only Sonnet 4.6 and Haiku 4.5 still accept it, so the parameter is
+    // now conditional; without it those models run at the API default (Decision #1185).
+    $acceptsTemperature = in_array($modelId, ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'], true);
+
+    $payload = [
         'model'       => $modelId,
         'max_tokens'  => 2048,
-        'temperature' => 0.4,  // tighter than live pipeline — recalibration wants consistency
         'system'      => [
             [
                 'type'          => 'text',
@@ -226,10 +231,15 @@ function callClaudeApi(string $modelId, string $systemPrompt, string $userMessag
             ],
         ],
         'messages'    => [['role' => 'user', 'content' => $userMessage]],
-    ]);
+    ];
+    if ($acceptsTemperature) {
+        // tighter than live pipeline — recalibration wants consistency
+        $payload['temperature'] = 0.4;
+    }
+    $body = json_encode($payload);
 
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
+    $ch = llm_curl_init();
+    llm_curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $body,
         CURLOPT_HTTPHEADER     => [
@@ -243,7 +253,7 @@ function callClaudeApi(string $modelId, string $systemPrompt, string $userMessag
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
-    $raw  = curl_exec($ch);
+    $raw  = llm_curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_errno($ch) ? curl_error($ch) : null;
     curl_close($ch);
@@ -255,6 +265,8 @@ function callClaudeApi(string $modelId, string $systemPrompt, string $userMessag
         return ['error' => "http {$code}: " . mb_substr((string) $raw, 0, 300)];
     }
     $data = json_decode($raw, true);
+    // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
+    if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
     if (!$data || !isset($data['content'][0]['text'])) {
         return ['error' => 'unexpected response shape'];
     }

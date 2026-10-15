@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVIDER in server config)
 /**
  * Companion Response Queue Processor (Decision #277, updated #XXX)
  *
@@ -54,8 +55,11 @@ define('MAX_JOBS_PER_CYCLE', 10);     // Safety cap per poll cycle
 // surfaces declaring the same Core while carrying different hashes have
 // drifted, and the data will say so. Release ladder lives in the vault.
 // 0.9.0 = pre-reliability-contract.
+// 0.9.1 = system prompts aligned to doctrinal backbone v2.4 (count grammar, the
+//         twelve-pillar Architecture, the sub-wheel centres) + spoken replies on
+//         Telegram (users.voice_mode, response_queue.inbound_voice/user_lang).
 if (!defined('MUNAI_CORE_VERSION')) {
-    define('MUNAI_CORE_VERSION', '0.9.0');
+    define('MUNAI_CORE_VERSION', '0.9.2');
 }
 
 // ===== STREAMING + CACHE CONSTANTS =====
@@ -143,6 +147,9 @@ fwrite($lockFp, (string) getmypid());
 require_once __DIR__ . '/telegram-memory.php';
 require_once __DIR__ . '/telegram-rag.php';
 require_once __DIR__ . '/companion-classifier.php';
+if (file_exists(__DIR__ . '/companion-voice.php')) {
+    require_once __DIR__ . '/companion-voice.php';
+}
 if (file_exists(__DIR__ . '/companion-membership.php')) {
     require_once __DIR__ . '/companion-membership.php';
 }
@@ -333,6 +340,10 @@ function processJob(array $job, CompanionMemory $memory): void {
     // mid-call editMessageText behaviour differs.
     $apiResult = null;
     $usedFallback = false;
+    // The practitioner's model choice covers this reply only (Decision #1329).
+    if (function_exists('llm_set_user_model') && method_exists($memory, 'getModelChoice')) {
+        llm_set_user_model($memory->getModelChoice($chatId) ?: null);
+    }
 
     if (ENABLE_SSE_STREAMING && $placeholderMsgId !== null) {
         $lastEditAt   = microtime(true);
@@ -379,6 +390,7 @@ function processJob(array $job, CompanionMemory $memory): void {
               . ' out=' . ($apiResult['output_tokens'] ?? '?')));
     }
 
+    if (function_exists('llm_set_user_model')) llm_set_user_model(null);
     $apiElapsed = round(microtime(true) - $startTime, 1);
 
     if (!$apiResult) {
@@ -425,16 +437,16 @@ function processJob(array $job, CompanionMemory $memory): void {
     // Cached input is billed differently: cache_creation at 1.25x base input,
     // cache_read at 0.1x base input. The $inputTokens field reports
     // *uncached* input; we add the differentiated rates on top.
-    //   Opus:  input $15/M, output $75/M, cache_create $18.75/M, cache_read $1.50/M
-    //   Haiku: input $0.80/M, output $4/M, cache_create $1.00/M,  cache_read $0.08/M
+    //   Opus 5: input $5/M, output $25/M, cache_create $6.25/M, cache_read $0.50/M
+    //   Haiku 4.5: input $1/M, output $5/M, cache_create $1.25/M, cache_read $0.10/M
     $costUsd = null;
     if ($inputTokens !== null && $outputTokens !== null) {
         if ($model === MODEL_HAIKU) {
-            $inputRate = 0.80;
-            $outputRate = 4.00;
+            $inputRate = 1.00;
+            $outputRate = 5.00;
         } else {
-            $inputRate = 15.00;
-            $outputRate = 75.00;
+            $inputRate = 5.00;
+            $outputRate = 25.00;
         }
         $costUsd =
               ($inputTokens             * $inputRate         / 1_000_000)
@@ -493,6 +505,34 @@ function processJob(array $job, CompanionMemory $memory): void {
         'model'        => $model,
         'prompt_hash'  => munaiPromptHash($systemPrompt),
     ]);
+
+    // ===== STEP 4b: SPOKEN REPLY (optional, additive) =====
+    // The text is delivered and stored by this point. The voice is an extra
+    // message after it and never a substitute: nothing here can delay, alter or
+    // withhold the answer the practitioner is owed (#1145). Witness mode is read
+    // off the system prompt the webhook built — in acute activation MunAI stays
+    // in text (#535, #1139). Crisis replies never reach this worker at all.
+    if (function_exists('munaiVoiceSendReply')) {
+        $voiceMode = $memory->getVoiceMode($chatId);
+        if ($voiceMode !== 'off') {
+            $xaiKey = defined('XAI_API_KEY') && XAI_API_KEY !== '' && !str_contains(XAI_API_KEY, 'YOUR-') ? XAI_API_KEY : '';
+            $voice = munaiVoiceSendReply($chatId, $response, [
+                'mode'           => $voiceMode,
+                'inbound_voice'  => (bool) ($job['inbound_voice'] ?? 0),
+                'witness'        => str_contains($systemPrompt, 'witness_mode_active'),
+                'lang'           => (string) ($job['user_lang'] ?? 'en'),
+                'has_key'        => $xaiKey !== '',
+                'api_key'        => $xaiKey,
+                'voice'          => $memory->getVoiceGender($chatId),
+                'chars_used_24h' => $memory->getVoiceCharsUsed24h($chatId),
+            ]);
+            if ($voice['sent']) {
+                $memory->addVoiceChars($chatId, $voice['chars']);
+            } elseif ($voice['reason'] !== 'mode_off') {
+                error_log("[worker] Job #{$jobId} — voice skipped ({$voice['reason']})");
+            }
+        }
+    }
 
     // Increment Harmonia Membership 24h rolling counter (Telegram surface).
     // Done after successful Claude completion + delivery so failed turns
@@ -673,7 +713,16 @@ function munaiPromptHash(string $systemPrompt): string {
 function releaseLock($lockFp, string $lockFile): void {
     flock($lockFp, LOCK_UN);
     fclose($lockFp);
-    @unlink($lockFile);
+    // Unlink only if the path still points at OUR lock. deploy.sh kills the
+    // old worker and launches a replacement immediately; a graceful shutdown
+    // that unlinks by path deletes the lock the NEW worker just created and
+    // holds, which (a) makes deploy.sh's `[ -f lock ]` check report "worker
+    // may not have started" and (b) lets the watchdog start a second
+    // concurrent worker five minutes later. See Decision #1185.
+    if (is_file($lockFile)
+        && trim((string) @file_get_contents($lockFile)) === (string) getmypid()) {
+        @unlink($lockFile);
+    }
 }
 
 
@@ -904,8 +953,8 @@ function callClaude(string $systemPrompt, array $messages, string $model = null,
         'messages' => $messages,
     ]);
 
-    $ch = curl_init($apiUrl);
-    curl_setopt_array($ch, [
+    $ch = llm_curl_init();
+    llm_curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $requestBody,
         CURLOPT_HTTPHEADER => [
@@ -919,7 +968,7 @@ function callClaude(string $systemPrompt, array $messages, string $model = null,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
-    $result = curl_exec($ch);
+    $result = llm_curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     if (curl_errno($ch)) {
@@ -935,6 +984,8 @@ function callClaude(string $systemPrompt, array $messages, string $model = null,
     }
 
     $data = json_decode($result, true);
+    // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
+    if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
     if (!$data || !isset($data['content'][0]['text'])) {
         error_log("[worker] Claude API unexpected response: {$result}");
         return null;
@@ -1054,8 +1105,8 @@ function callClaudeStream(
     $rawHeadSample = '';
     $eventCount    = 0;
 
-    $ch = curl_init($apiUrl);
-    curl_setopt_array($ch, [
+    $ch = llm_curl_init();
+    llm_curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $requestBody,
         CURLOPT_HTTPHEADER     => [
@@ -1149,7 +1200,7 @@ function callClaudeStream(
         },
     ]);
 
-    curl_exec($ch);
+    llm_curl_exec($ch);
     $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErrno = curl_errno($ch);
     $curlError = curl_error($ch);

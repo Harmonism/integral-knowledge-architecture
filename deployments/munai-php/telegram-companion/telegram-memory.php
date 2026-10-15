@@ -260,6 +260,23 @@ class CompanionMemory {
             'lemonsqueezy_subscription_id TEXT DEFAULT ""',
             'messages_24h_count INTEGER DEFAULT 0',
             'messages_24h_reset_at INTEGER DEFAULT 0',
+            // Spoken replies on Telegram (see companion-voice.php).
+            // voice_mode: 'off' (default) | 'mirror' (speak back when the
+            // practitioner spoke) | 'always'. Off by default because rendering
+            // a reply to audio sends that reply's text to xAI — a third party
+            // the practitioner opts into, never one assumed for them.
+            // voice_chars_24h / voice_chars_reset_at: rolling per-practitioner
+            // synthesis ceiling, the same idiom as the message rate limit.
+            'voice_mode TEXT DEFAULT "off"',
+            // 'female' (Ara, the default) or 'male'. Stored as the register the
+            // practitioner chose, not the vendor's voice id, so the id behind it
+            // can change without rewriting anyone's setting.
+            'voice_gender TEXT DEFAULT "female"',
+            'voice_chars_24h INTEGER DEFAULT 0',
+            'voice_chars_reset_at INTEGER DEFAULT 0',
+            // The practitioner's chosen model (Decision #1329): an id from
+            // llm-models.php, or "" for the server's default.
+            'model_choice TEXT DEFAULT ""',
         ] as $col) {
             try {
                 $this->db->exec("ALTER TABLE users ADD COLUMN {$col}");
@@ -441,6 +458,11 @@ class CompanionMemory {
             'input_tokens INTEGER DEFAULT NULL',
             'output_tokens INTEGER DEFAULT NULL',
             'cost_usd REAL DEFAULT NULL',
+            // Carried from the webhook to the worker: whether the practitioner
+            // spoke rather than typed (so the reply can mirror that register),
+            // and which language the spoken reply should declare to TTS.
+            'inbound_voice INTEGER DEFAULT 0',
+            'user_lang TEXT DEFAULT "en"',
         ] as $col) {
             try {
                 $this->db->exec("ALTER TABLE response_queue ADD COLUMN {$col}");
@@ -2041,6 +2063,103 @@ class CompanionMemory {
     /**
      * Store a timezone string for a user (IANA format, e.g. "Europe/London").
      */
+    // ===== SPOKEN REPLIES (companion-voice.php) =====
+
+    /**
+     * Read a practitioner's voice mode: 'off' | 'mirror' | 'always'.
+     * Anything unrecognised — including a row predating the column — is 'off'.
+     */
+    public function getVoiceMode(int $telegramId): string {
+        $stmt = $this->db->prepare('SELECT voice_mode FROM users WHERE telegram_id = ?');
+        $stmt->execute([$telegramId]);
+        $mode = $stmt->fetchColumn();
+        return in_array($mode, ['off', 'mirror', 'always'], true) ? (string) $mode : 'off';
+    }
+
+    /** 'female' | 'male'. Anything else reads as the default, 'female'. */
+    public function getVoiceGender(int $telegramId): string {
+        $stmt = $this->db->prepare('SELECT voice_gender FROM users WHERE telegram_id = ?');
+        $stmt->execute([$telegramId]);
+        $g = $stmt->fetchColumn();
+        return in_array($g, ['female', 'male'], true) ? (string) $g : 'female';
+    }
+
+    public function setVoiceGender(int $telegramId, string $gender): void {
+        if (!in_array($gender, ['female', 'male'], true)) {
+            return;
+        }
+        $this->db->prepare('
+            UPDATE users SET voice_gender = ? WHERE telegram_id = ?
+        ')->execute([$gender, $telegramId]);
+    }
+
+    /** The practitioner's chosen model id, or '' for the default. Unlisted ids read as ''. */
+    public function getModelChoice(int $telegramId): string {
+        $stmt = $this->db->prepare('SELECT model_choice FROM users WHERE telegram_id = ?');
+        $stmt->execute([$telegramId]);
+        $id = (string) $stmt->fetchColumn();
+        return (function_exists('llm_model_valid') && llm_model_valid($id)) ? $id : '';
+    }
+
+    /** Store a listed model id, or '' to return to the default. */
+    public function setModelChoice(int $telegramId, string $id): void {
+        if ($id !== '' && !(function_exists('llm_model_valid') && llm_model_valid($id))) {
+            return;
+        }
+        $this->db->prepare('UPDATE users SET model_choice = ? WHERE telegram_id = ?')
+            ->execute([$id, $telegramId]);
+    }
+
+    public function setVoiceMode(int $telegramId, string $mode): void {
+        if (!in_array($mode, ['off', 'mirror', 'always'], true)) {
+            return;
+        }
+        $this->db->prepare('
+            UPDATE users SET voice_mode = ? WHERE telegram_id = ?
+        ')->execute([$mode, $telegramId]);
+    }
+
+    /**
+     * Characters synthesised for this practitioner in the current rolling 24h
+     * window. The window resets lazily on read, so no cron is involved.
+     */
+    public function getVoiceCharsUsed24h(int $telegramId): int {
+        $stmt = $this->db->prepare('SELECT voice_chars_24h, voice_chars_reset_at FROM users WHERE telegram_id = ?');
+        $stmt->execute([$telegramId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return 0;
+        }
+        if ((int) ($row['voice_chars_reset_at'] ?? 0) <= time()) {
+            return 0;
+        }
+        return (int) ($row['voice_chars_24h'] ?? 0);
+    }
+
+    /**
+     * Record synthesised characters, opening a fresh 24h window when the
+     * previous one has expired.
+     */
+    public function addVoiceChars(int $telegramId, int $chars): void {
+        if ($chars <= 0) {
+            return;
+        }
+        $now = time();
+        $stmt = $this->db->prepare('SELECT voice_chars_reset_at FROM users WHERE telegram_id = ?');
+        $stmt->execute([$telegramId]);
+        $resetAt = (int) $stmt->fetchColumn();
+
+        if ($resetAt <= $now) {
+            $this->db->prepare('
+                UPDATE users SET voice_chars_24h = ?, voice_chars_reset_at = ? WHERE telegram_id = ?
+            ')->execute([$chars, $now + 86400, $telegramId]);
+            return;
+        }
+        $this->db->prepare('
+            UPDATE users SET voice_chars_24h = voice_chars_24h + ? WHERE telegram_id = ?
+        ')->execute([$chars, $telegramId]);
+    }
+
     public function setTimezone(int $telegramId, string $timezone): void {
         $this->db->prepare('
             UPDATE users SET timezone = ? WHERE telegram_id = ?
@@ -2065,10 +2184,10 @@ class CompanionMemory {
      * then queues instead of calling Claude directly.
      * Returns the queue job ID.
      */
-    public function queueResponse(int $chatId, string $systemPrompt, array $history, bool $doProfileLearning, bool $doConsolidation, ?string $model = null, ?array $imageData = null, int $burstWindowSec = 0): int {
+    public function queueResponse(int $chatId, string $systemPrompt, array $history, bool $doProfileLearning, bool $doConsolidation, ?string $model = null, ?array $imageData = null, int $burstWindowSec = 0, bool $inboundVoice = false, string $userLang = 'en'): int {
         $stmt = $this->db->prepare('
-            INSERT INTO response_queue (chat_id, system_prompt, history, do_profile_learning, do_consolidation, model, image_data, created_at, not_before)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO response_queue (chat_id, system_prompt, history, do_profile_learning, do_consolidation, model, image_data, created_at, not_before, inbound_voice, user_lang)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ');
         $now = time();
         $stmt->execute([
@@ -2080,7 +2199,9 @@ class CompanionMemory {
             $model,
             $imageData ? json_encode($imageData) : null,
             $now,
-            $now + max(0, $burstWindowSec)
+            $now + max(0, $burstWindowSec),
+            $inboundVoice ? 1 : 0,
+            $userLang
         ]);
         return (int) $this->db->lastInsertId();
     }

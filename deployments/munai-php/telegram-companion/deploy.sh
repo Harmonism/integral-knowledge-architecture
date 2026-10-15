@@ -26,7 +26,12 @@ set -e
 
 # ===== Configuration =====
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-VAULT_PATH="${SCRIPT_DIR}/../../Vault/Harmonia"
+# harmonia-astro lives INSIDE the vault (post July-2026 move), so the vault root is
+# two levels up, not ../../Vault. The old ../../Vault/Harmonia resolved to a stray
+# nested Documents/Vault/Vault/Harmonia holding only Internal/ files, which the
+# indexer skips wholesale — producing an index with zero English articles and zero
+# embeddings while all nine translation languages indexed fine. Fixed 2026-08-29.
+VAULT_PATH="${SCRIPT_DIR}/../../Harmonia"
 TRANSLATIONS_PATH="${SCRIPT_DIR}/../i18n/translations"
 SERVER_USER="SERVER_USER"
 SERVER_HOST="SERVER_HOST"
@@ -54,10 +59,18 @@ PHP_FILES=(
     "telegram-rag.php"
     "process-queue.php"
     "companion-classifier.php"
+    "llm-gateway.php"
+    "llm-models.php"
     "companion-membership.php"
+    "companion-voice.php"
     "watchdog-queue.sh"
     "outreach-engine.php"
     "outreach-deliver.php"
+    "beta-checkin.php"
+    "companion-reading.php"
+    "companion-reading-telegram.php"
+    "reading-checkin.php"
+    "retroactive-wheel-recalibration.php"
     "doctrinal-backbone.md"
     ".htaccess"
 )
@@ -84,6 +97,29 @@ index_vault() {
     else
         echo "  Note: translations directory not found at ${TRANSLATIONS_PATH} — indexing English only."
         python3 index-vault.py --vault "${VAULT_PATH}" --output vault-index.db
+    fi
+
+    # ===== Post-index assertion =====
+    # The failure this closes: a wrong VAULT_PATH indexes nothing in English and
+    # exits 0, because the translations walk resolves separately and succeeds. The
+    # index looks healthy by size and mtime. Assert the EN corpus is actually there.
+    EN_COUNT=$(python3 -c "import sqlite3;c=sqlite3.connect('vault-index.db');print(c.execute(\"SELECT count(*) FROM articles WHERE lang='en'\").fetchone()[0])" 2>/dev/null || echo 0)
+    EMB_COUNT=$(python3 -c "import sqlite3;c=sqlite3.connect('vault-index.db');print(c.execute('SELECT count(*) FROM chunk_embeddings').fetchone()[0])" 2>/dev/null || echo 0)
+    if [ "${EN_COUNT}" -lt 100 ]; then
+        echo ""
+        echo "  INDEX BROKEN — only ${EN_COUNT} English articles indexed from ${VAULT_PATH}"
+        echo "  Expected several hundred. Check VAULT_PATH points at the real vault root."
+        exit 1
+    fi
+    echo "  Indexed ${EN_COUNT} English articles."
+    if [ "${EMB_COUNT}" -eq 0 ]; then
+        echo ""
+        echo "  WARNING: 0 embeddings — semantic retrieval is dead, FTS5 keyword only."
+        echo "  index-vault.py needs an OpenAI key: export OPENAI_API_KEY, or pass --openai-key."
+        echo "  Re-run embeddings without re-indexing:"
+        echo "    python3 index-vault.py --vault \"${VAULT_PATH}\" --output vault-index.db --embeddings-only --openai-key \$OPENAI_API_KEY"
+    else
+        echo "  ${EMB_COUNT} chunk embeddings present."
     fi
     echo ""
 }

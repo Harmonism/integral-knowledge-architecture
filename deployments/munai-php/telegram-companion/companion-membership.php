@@ -13,7 +13,7 @@
  *   comp       = complimentary access (beta tester first-year, etc.)
  *
  * Daily MunAI cap (rolling 24h):
- *   free: 5 messages/day
+ *   free: 10 messages/day (raised from 5, Decision #1329)
  *   paid: unlimited (rate-limit check short-circuits to allowed:true)
  *   comp: unlimited (treated identically to paid)
  *   anonymous (pre-signup): handled separately by companion-api.php IP rate-limit
@@ -228,7 +228,7 @@ if (!function_exists('membership_daily_cap')) {
                 return 30;
             case 'free':
             default:
-                return 5;
+                return 10;  // raised from 5 on October 14, 2026 (Decision #1329)
         }
     }
 }
@@ -378,24 +378,27 @@ if (!function_exists('membership_cap_hit_message')) {
      * SSE-stream payloads (website) and Telegram sendMessage.
      *
      * Hours-until-reset is derived from reset_at; the message tells the
-     * practitioner when they can resume. For free tier, the upgrade CTA
-     * is always present. For paid tier, no CTA — the cap is structural.
+     * practitioner when they can resume. For the free tier the message points
+     * to running MunAI on one's own substrate (the paid tier was retired on
+     * October 8, 2026). For comp, no CTA — the cap is structural.
      */
     function membership_cap_hit_message(string $status, int $resetAt, string $lang = 'en'): string {
         $hoursUntil = max(1, (int)ceil(($resetAt - time()) / 3600));
 
         if ($status === 'free') {
+            // The paid tier was retired on October 8, 2026. The way past the
+            // daily cap is now to run MunAI on one's own substrate.
             $messages = [
-                'en' => "You've reached today's limit (5 messages). The relationship continues with Harmonia Membership — unlimited daily MunAI access, the curated practitioner community, and priority for retreats and individual guidance. {$hoursUntil}h until the free counter resets.\n\nUpgrade: https://harmonism.io/member/dashboard.php#membership",
-                'fr' => "Vous avez atteint la limite quotidienne (5 messages). La relation continue avec l'adhésion Harmonia — accès illimité à MunAI, la communauté curatée des praticiens et la priorité pour les retraites et la guidance individuelle. Réinitialisation dans {$hoursUntil}h.\n\nUpgrade : https://harmonism.io/fr/member/dashboard.php#membership",
-                'es' => "Has alcanzado el límite diario (5 mensajes). La relación continúa con la Membresía Harmonia — acceso ilimitado a MunAI, la comunidad curada de practicantes y prioridad para retiros y guía individual. Reinicio en {$hoursUntil}h.\n\nUpgrade: https://harmonism.io/es/member/dashboard.php#membership",
-                'ar' => "لقد بلغت الحد اليومي (٥ رسائل). تستمر العلاقة مع عضوية هارمونيا — وصول غير محدود إلى MunAI، ومجتمع الممارسين المختار، وأولوية المعتكفات والتوجيه الفردي. إعادة التعيين خلال {$hoursUntil} ساعة.\n\nترقية: https://harmonism.io/ar/member/dashboard.php#membership",
-                'pt' => "Você atingiu o limite diário (5 mensagens). A relação continua com a Adesão Harmonia — acesso ilimitado a MunAI, a comunidade curada de praticantes e prioridade para retiros e orientação individual. Reinício em {$hoursUntil}h.\n\nUpgrade: https://harmonism.io/pt/member/dashboard.php#membership",
-                'de' => "Du hast das Tageslimit erreicht (5 Nachrichten). Die Beziehung geht weiter mit der Harmonia-Mitgliedschaft — unbegrenzter täglicher MunAI-Zugang, die kuratierte Praktizierenden-Gemeinschaft und Priorität für Retreats und individuelle Anleitung. Reset in {$hoursUntil}h.\n\nUpgrade: https://harmonism.io/de/member/dashboard.php#membership",
-                'zh' => "您已达到每日限额（5 条消息）。Harmonia 会员资格延续这段关系——MunAI 无限每日访问，精选实践者社区，以及静修与个人指导优先权。{$hoursUntil} 小时后重置。\n\n升级：https://harmonism.io/zh/member/dashboard.php#membership",
-                'ja' => "本日の上限に達しました（5メッセージ）。Harmoniaメンバーシップで関係は続きます — MunAI無制限の日常アクセス、厳選された実践者コミュニティ、リトリートと個別ガイダンスの優先権。{$hoursUntil}時間後にリセットされます。\n\nアップグレード: https://harmonism.io/ja/member/dashboard.php#membership",
-                'hi' => "आपने आज की सीमा (5 संदेश) पूरी कर ली है। हार्मोनिया सदस्यता के साथ संबंध जारी रहता है — MunAI तक असीमित दैनिक पहुँच, चयनित अभ्यासी समुदाय, और रिट्रीट तथा व्यक्तिगत मार्गदर्शन के लिए प्राथमिकता। {$hoursUntil}घंटे में रीसेट होगा।\n\nअपग्रेड: https://harmonism.io/hi/member/dashboard.php#membership",
-                'ru' => "Вы достигли дневного лимита (5 сообщений). Отношения продолжаются с Членством Harmonia — неограниченный ежедневный доступ к MunAI, кураторское сообщество практикующих и приоритет на ретриты и индивидуальное руководство. Сброс через {$hoursUntil}ч.\n\nОбновление: https://harmonism.io/ru/member/dashboard.php#membership",
+                'en' => "You've reached today's ten messages; the counter resets in {$hoursUntil}h. To talk without a limit, run MunAI yourself. MunAI Desktop runs it on your own computer, with an open model or one you rent under your own key, and keeps your memory there. Or load the free Sovereignty Bundle into an AI you already use.\n\nhttps://harmonism.io/munai-desktop",
+                'fr' => "Vous avez atteint les dix messages du jour ; le compteur repart dans {$hoursUntil}h. Pour converser sans limite, faites tourner MunAI vous-même. MunAI Desktop le fait vivre sur votre propre ordinateur, avec un modèle ouvert ou un modèle que vous louez avec votre propre clé, et y garde votre mémoire. Ou chargez le Sovereignty Bundle, gratuit, dans une IA que vous utilisez déjà.\n\nhttps://harmonism.io/munai-desktop",
+                'es' => "Has llegado a los diez mensajes de hoy; el contador se reinicia en {$hoursUntil}h. Para conversar sin límite, ejecuta MunAI tú mismo. MunAI Desktop lo hace funcionar en tu propio ordenador, con un modelo abierto o uno que alquilas con tu propia clave, y guarda allí tu memoria. O carga el Sovereignty Bundle, gratuito, en una IA que ya uses.\n\nhttps://harmonism.io/munai-desktop",
+                'ar' => "لقد بلغت رسائل اليوم العشر؛ يُعاد ضبط العدّاد خلال {$hoursUntil} ساعة. للحديث دون حدّ، شغّل MunAI بنفسك. يشغّله MunAI Desktop على حاسوبك الخاص، بنموذج مفتوح أو بنموذج تستأجره بمفتاحك الخاص، ويحفظ ذاكرتك هناك. أو حمّل حزمة السيادة (Sovereignty Bundle) المجانية في ذكاء اصطناعي تستخدمه بالفعل.\n\nhttps://harmonism.io/munai-desktop",
+                'pt' => "Você chegou às dez mensagens de hoje; o contador reinicia em {$hoursUntil}h. Para conversar sem limite, execute o MunAI você mesmo. O MunAI Desktop o faz funcionar no seu próprio computador, com um modelo aberto ou um que você aluga com a sua própria chave, e guarda ali a sua memória. Ou carregue o Sovereignty Bundle, gratuito, numa IA que você já usa.\n\nhttps://harmonism.io/munai-desktop",
+                'de' => "Du hast die zehn Nachrichten für heute erreicht; der Zähler setzt sich in {$hoursUntil}h zurück. Ohne Grenze sprichst du mit MunAI, wenn du es selbst betreibst. MunAI Desktop läuft auf deinem eigenen Computer, mit einem offenen Modell oder einem, das du mit deinem eigenen Schlüssel mietest, und bewahrt dort dein Gedächtnis. Oder lade das kostenlose Sovereignty Bundle in eine KI, die du schon nutzt.\n\nhttps://harmonism.io/munai-desktop",
+                'zh' => "您已用完今天的十条消息；计数将在 {$hoursUntil} 小时后重置。若要不受限制地交谈，请自己运行 MunAI。MunAI Desktop 在您自己的电脑上运行它，可使用开放模型，或用您自己的密钥租用的模型，并把您的记忆保存在那里。也可以把免费的 Sovereignty Bundle 加载到您已在使用的 AI 中。\n\nhttps://harmonism.io/munai-desktop",
+                'ja' => "本日の10メッセージに達しました。カウンターは{$hoursUntil}時間後にリセットされます。制限なしで話すには、MunAIをご自身で動かしてください。MunAI Desktopはあなた自身のコンピューターで動き、オープンなモデルか、ご自身のキーで借りるモデルを使い、記憶をそこに保ちます。または無料のSovereignty Bundleを、すでにお使いのAIに読み込ませてください。\n\nhttps://harmonism.io/munai-desktop",
+                'hi' => "आज के दस संदेश पूरे हो गए; गिनती {$hoursUntil} घंटे में फिर से शुरू होगी। बिना सीमा के बात करने के लिए MunAI को स्वयं चलाइए। MunAI Desktop उसे आपके अपने कंप्यूटर पर चलाता है, किसी खुले मॉडल से या आपकी अपनी कुंजी से किराए पर लिए मॉडल से, और आपकी स्मृति वहीं रखता है। या मुफ़्त Sovereignty Bundle को उस AI में लोड कीजिए जिसका आप पहले से उपयोग करते हैं।\n\nhttps://harmonism.io/munai-desktop",
+                'ru' => "Вы использовали десять сообщений на сегодня; счётчик обнулится через {$hoursUntil} ч. Чтобы говорить без ограничений, запустите MunAI сами. MunAI Desktop работает на вашем собственном компьютере, с открытой моделью или с моделью, которую вы арендуете по своему ключу, и хранит там вашу память. Или загрузите бесплатный Sovereignty Bundle в ИИ, которым вы уже пользуетесь.\n\nhttps://harmonism.io/munai-desktop",
             ];
         } else {
             // Paid + comp: structural-reminder register, no upgrade CTA.
