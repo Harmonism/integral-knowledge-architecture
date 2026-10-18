@@ -1,8 +1,8 @@
 <?php
 /**
- * llm-gateway.php — provider switch for every MunAI model call.
+ * llm-gateway.php — provider switch for every Lodestone model call.
  *
- * Every MunAI call site builds an Anthropic Messages request and parses an
+ * Every Lodestone call site builds an Anthropic Messages request and parses an
  * Anthropic Messages response (JSON or SSE). This file keeps that contract
  * and changes only where the request goes. With LLM_PROVIDER = 'anthropic'
  * (the default when the constant is absent) the three wrappers are plain
@@ -112,7 +112,7 @@ function llm_curl_setopt_array($ch, array $opts): bool {
         'Content-Type: application/json',
         'Authorization: Bearer ' . llm_cfg('LLM_API_KEY'),
         'HTTP-Referer: https://harmonism.io',
-        'X-Title: MunAI',
+        'X-Title: Lodestone',
     ];
     if ($st['stream']) $headers[] = 'Accept: text/event-stream';
     $opts[CURLOPT_HTTPHEADER] = $headers;
@@ -176,7 +176,7 @@ function llm_request_to_openai(array $a): array {
                         'url' => 'data:' . $b['source']['media_type'] . ';base64,' . $b['source']['data'],
                     ]];
                 }
-                // thinking / tool blocks: MunAI sends none; dropped if they appear.
+                // thinking / tool blocks: Lodestone sends none; dropped if they appear.
             }
             $c = $hasImage ? $parts : llm_text_of($c);
         }

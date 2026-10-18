@@ -17,7 +17,7 @@ error_reporting(E_ALL);
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/companion-errors.log');
 
-// ===== MUNAI CORE VERSION =====
+// ===== LODESTONE CORE VERSION =====
 // The behavioural contract this surface delivers against. Bump when the
 // doctrinal backbone, either system prompt, the routing policy, or the memory
 // schema changes — and bump BOTH surfaces together (telegram-bot.php /
@@ -42,7 +42,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header("Access-Control-Allow-Origin: $origin");
 } elseif (preg_match('#^(?:moz-extension|safari-web-extension)://[a-zA-Z0-9\-]+$#', $origin)) {
-    // MunAI browser extension, Firefox/Safari builds. Their background
+    // Lodestone browser extension, Firefox/Safari builds. Their background
     // fetches carry the per-install extension origin and are CORS-checked
     // (no Chromium host_permissions bypass exists there). Public endpoint;
     // abuse control is the anonymous rate limit + membership caps, not CORS.
@@ -52,7 +52,7 @@ if (in_array($origin, $allowedOrigins)) {
     header('Access-Control-Allow-Origin: https://harmonism.io');
 }
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-Client-ID');
+header('Access-Control-Allow-Headers: Content-Type, X-Client-ID, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -80,11 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // ===== LOAD CONFIG =====
-$configPath = '/home/SERVER_USER/.companion-config.php';
+$configPath = defined('MDA_CONFIG') ? MDA_CONFIG : '/home/SERVER_USER/.companion-config.php';
 if (!file_exists($configPath)) {
     header('Content-Type: application/json');
     http_response_code(500);
-    echo json_encode(['error' => 'MunAI not configured']);
+    echo json_encode(['error' => 'Lodestone not configured']);
     exit;
 }
 require_once $configPath;
@@ -134,6 +134,8 @@ $readingFile = __DIR__ . '/companion-reading.php';
 if (file_exists($readingFile)) {
     require_once $readingFile;
 }
+require_once __DIR__ . '/companion-learning.php';   // the profile jobs (#1372: shared with lodestone-learn.php)
+require_once __DIR__ . '/held-memory.php';          // memory the practitioner holds (#1372)
 
 // ===== LOAD MEMORY & RAG =====
 $memoryAvailable = false;
@@ -197,9 +199,62 @@ $clientId = (!$isAnonymous && isset($input['clientId']))
     ? preg_replace('/[^a-f0-9\-]/', '', mb_substr($input['clientId'], 0, 64))
     : '';
 
-// ===== RATE LIMIT ANONYMOUS (Decision #507) =====
-// Per-IP token bucket stored in SQLite. 60 messages per IP per rolling hour.
-// Replaces the 15-message gate which was partly abuse prevention.
+// ===== MEMORY THE PRACTITIONER HOLDS (Decisions #1372, #1374) =====
+// The server keeps no conversation memory. A signed-in turn brings the
+// practitioner's memory with it (`held`: their encrypted Lodestone memory,
+// decrypted in their browser or app); it is opened here in a database that
+// lives only for this request, the turn runs on it exactly as it ran on the
+// stored memory, and the updated state goes back at the end of the stream
+// (a `munai_state` event). A signed-in turn without it (an older page or
+// extension) runs on an empty memory and gets nothing back. Consent, billing
+// and the daily count stay with the account's row on the server. A turn with
+// no verified sign-in is an anonymous turn: nothing is kept.
+$held = null;            // ['email', 'account', 'returns', 'hp']
+$heldFlags = [];
+$persistMemory = $memory;
+$quotaDb = null; $quotaClientId = '';
+if (!$isAnonymous && $memoryAvailable) {
+    $heldEmail = held_account();
+    if (!$heldEmail) {
+        $isAnonymous = true;
+        $clientId = '';
+    } else {
+        $heldReq = held_request($input);
+        $accountId = held_account_row($persistMemory->getDb(), $heldEmail);
+        [$heldState, $heldRecent, $heldHp, $heldHpFresh] = $heldReq ?? [null, [], '', false];
+        try {
+            [$memory, $clientId] = held_open($heldState, $heldRecent);
+        } catch (Throwable $e) {
+            error_log('[held] open failed: ' . $e->getMessage());
+            header('Content-Type: application/json');
+            http_response_code(400);
+            echo json_encode(['error' => 'Lodestone could not read the memory this page sent. Reload the page.']);
+            exit;
+        }
+        $held = ['email' => $heldEmail, 'account' => $accountId, 'returns' => $heldReq !== null, 'hp' => $heldHp, 'hp_fresh' => $heldHpFresh];
+        $quotaDb = $persistMemory->getDb(); $quotaClientId = $accountId;
+        // The state goes back however the turn ends: the reply, the crisis
+        // gate, /reset. A JSON answer (consent, the daily count) carries none.
+        if ($held['returns']) {
+            register_shutdown_function(function () use (&$memory, &$clientId, &$heldFlags) {
+                $sse = false;
+                foreach (headers_list() as $h) if (stripos($h, 'content-type: text/event-stream') === 0) $sse = true;
+                if (!$sse || !($memory instanceof WebCompanionMemory)) return;
+                try {
+                    echo "data: " . json_encode(['type' => 'munai_state', 'state' => held_dump($memory, $clientId),
+                        'blocks' => held_blocks($memory, $clientId), 'flags' => (object)$heldFlags], JSON_UNESCAPED_UNICODE) . "\n\n";
+                    flush();
+                } catch (Throwable $e) { error_log('[held] state not sent: ' . $e->getMessage()); }
+            });
+        }
+    }
+}
+if ($quotaDb === null && $memoryAvailable && $memory) { $quotaDb = $memory->getDb(); $quotaClientId = $clientId; }
+
+// ===== RATE LIMIT ANONYMOUS (Decision #507; #1349) =====
+// Per-IP count stored in SQLite: 10 messages per IP in a rolling 24 hours,
+// the same as a free member's daily allowance (was 60 per hour, which made
+// signing in worth less than staying signed out).
 if ($isAnonymous) {
     $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ip = trim(explode(',', $ip)[0]);
@@ -219,17 +274,17 @@ if ($isAnonymous) {
         $rpdo = new PDO('sqlite:' . $rateDb);
         $rpdo->exec("CREATE TABLE IF NOT EXISTS anon_hits (ip TEXT NOT NULL, ts INTEGER NOT NULL)");
         $rpdo->exec("CREATE INDEX IF NOT EXISTS idx_anon_hits_ip_ts ON anon_hits(ip, ts)");
-        // Prune entries older than 1 hour
-        $cutoff = time() - 3600;
+        // Prune entries older than the 24-hour window
+        $cutoff = time() - 86400;
         $rpdo->exec("DELETE FROM anon_hits WHERE ts < $cutoff");
         // Count recent hits
         $stmt = $rpdo->prepare("SELECT COUNT(*) FROM anon_hits WHERE ip = ? AND ts > ?");
         $stmt->execute([$ip, $cutoff]);
         $hits = (int)$stmt->fetchColumn();
-        if ($hits >= 60) {
+        if ($hits >= 10) {
             header('Content-Type: application/json');
             http_response_code(429);
-            echo json_encode(['error' => 'Rate limit exceeded. Create a free account to keep talking with memory, or run MunAI yourself: https://harmonism.io/munai-desktop']);
+            echo json_encode(['error' => "Today's ten messages without an account are used. Create a free account for ten messages a day for a month, then three a day, with memory; or run Lodestone yourself: https://harmonism.io/lodestone-desktop"]);
             exit;
         }
         $stmt = $rpdo->prepare("INSERT INTO anon_hits (ip, ts) VALUES (?, ?)");
@@ -263,7 +318,7 @@ if (count($messages) > 20) {
     $messages = array_slice($messages, -20);
 }
 
-// Browser-extension clients (MunAI extension) absorb arbitrary web pages,
+// Browser-extension clients (Lodestone extension) absorb arbitrary web pages,
 // so they get a larger excerpt cap — the extension sends Readability-style
 // extracted main content, not raw HTML. Website clients keep the 4k cap.
 $isExtensionClient = isset($input['source']) && $input['source'] === 'extension';
@@ -272,10 +327,10 @@ $pageContext = isset($input['pageContext']) ? mb_substr(trim($input['pageContext
 // Extension clients send absolute URLs (arbitrary domains); website clients
 // send site-relative paths that get the harmonism.io prefix. The closing
 // framing line of <current_page> shifts accordingly — the extension user is
-// out on the open web with MunAI alongside, not on the site.
+// out on the open web with Lodestone alongside, not on the site.
 $pageUrlPrefix = $isExtensionClient ? '' : 'https://harmonism.io';
 $currentPageFraming = $isExtensionClient
-    ? "</current_page>\nThe person is browsing this page somewhere on the open web, with MunAI alongside them as a browser extension. When asked to absorb, summarize, or analyze it, ground your reading in the actual excerpt above — summarize what it truly says before offering the Harmonist reading of it. The Harmonist reading routes by what the page actually is, and Harmonism operates at three registers: the doctrine (what reality is — Logos, Ṛta, Harmonic Realism, the cross-cartographic reading), the individual path (the Wheel and the spiral Way of Harmony), and the civilizational scale (the Architecture of Harmony). An idea, argument, or claim is engaged philosophically from the doctrine — hold it against what Harmonism says reality is, and say where it converges, where it falls short, and what it is missing. A page about a person's life, practice, health, or predicament is read through the individual path and the Wheel. A page about politics, institutions, economics, technology, or a civilization is read at civilizational scale through the Architecture. Use only the register the page calls for. Do not force the Wheel onto material that is not about an individual path, and never reduce the Harmonist reading to pillar-mapping when the page is asking a philosophical question. You can reference its content naturally in conversation."
+    ? "</current_page>\nThe person is browsing this page somewhere on the open web, with Lodestone alongside them as a browser extension. When asked to absorb, summarize, or analyze it, ground your reading in the actual excerpt above — summarize what it truly says before offering the Harmonist reading of it. The Harmonist reading routes by what the page actually is, and Harmonism operates at three registers: the doctrine (what reality is — Logos, Ṛta, Harmonic Realism, the cross-cartographic reading), the individual path (the Wheel and the spiral Way of Harmony), and the civilizational scale (the Architecture of Harmony). An idea, argument, or claim is engaged philosophically from the doctrine — hold it against what Harmonism says reality is, and say where it converges, where it falls short, and what it is missing. A page about a person's life, practice, health, or predicament is read through the individual path and the Wheel. A page about politics, institutions, economics, technology, or a civilization is read at civilizational scale through the Architecture. Use only the register the page calls for. Do not force the Wheel onto material that is not about an individual path, and never reduce the Harmonist reading to pillar-mapping when the page is asking a philosophical question. You can reference its content naturally in conversation."
     : "</current_page>\nThe person is currently browsing this page on harmonism.io. You can reference its content naturally in conversation.";
 $pageDomain = isset($input['pageDomain']) ? mb_substr(trim($input['pageDomain']), 0, 50) : '';
 $pageTitle = isset($input['pageTitle']) ? mb_substr(trim($input['pageTitle']), 0, 200) : '';
@@ -299,10 +354,22 @@ reset($messages);
 if ($memoryAvailable && $clientId && !$isAnonymous) {
     $memory->ensureClient($clientId);
 
-    // If email was passed (user is authenticated), link it to this client
-    $email = trim($input['email'] ?? '');
-    if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $memory->setClientEmail($clientId, $email);
+    // Link the member's email to this client only from a verified sign-in
+    // (#1349). The daily allowance is counted per email, so an email the page
+    // merely asserts would let anyone open a fresh allowance by typing a new
+    // address. Without a valid token the email arrives later, from
+    // companion-consent.php, which verifies it.
+    $verifiedEmail = '';
+    if (!function_exists('verifySupabaseJWT')) {
+        $memberCfg = ($_SERVER['DOCUMENT_ROOT'] ?? '') . '/member/member-config.php';
+        if (is_file($memberCfg)) { try { require_once $memberCfg; } catch (Throwable $e) { error_log('member-config: ' . $e->getMessage()); } }
+    }
+    if (function_exists('verifySupabaseJWT') && function_exists('getAuthToken')) {
+        $jwt = verifySupabaseJWT(getAuthToken());
+        if (is_array($jwt) && !empty($jwt['email'])) $verifiedEmail = strtolower((string)$jwt['email']);
+    }
+    if ($verifiedEmail && filter_var($verifiedEmail, FILTER_VALIDATE_EMAIL)) {
+        $memory->setClientEmail($clientId, $verifiedEmail);
     }
 
     // ===== ART. 9 EXPLICIT CONSENT GATE (Decision #715) =====
@@ -314,15 +381,17 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
     // Pre-existing chatters with message_count > 0 at migration time were
     // grandfathered in WebCompanionMemory::initialize() — they never see
     // this gate. Confirmation endpoint: /member/companion-consent.php.
-    if (method_exists($memory, 'hasChatConsent') && !$memory->hasChatConsent($clientId)) {
+    $consentGiven = $held ? held_has_consent($persistMemory->getDb(), $held['email'])
+        : (method_exists($memory, 'hasChatConsent') ? $memory->hasChatConsent($clientId) : true);
+    if (!$consentGiven) {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code(200);
 
         $consentText = [
-            'en' => 'I give my explicit consent for Harmonia to process the health-related, psychological, and spiritual information I share with MunAI for the purpose of providing personalized guidance. I can withdraw this consent at any time. By proceeding, I also confirm I have read and accept the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.',
-            'fr' => 'Je donne mon consentement explicite à Harmonia pour traiter les informations relatives à ma santé, à mon état psychologique et spirituel que je partage avec MunAI, afin de me fournir une guidance personnalisée. Je peux retirer ce consentement à tout moment. En continuant, je confirme également avoir lu et accepté les <a href="/fr/terms" target="_blank" rel="noopener">Conditions d\'utilisation</a> et la <a href="/fr/privacy" target="_blank" rel="noopener">Politique de confidentialité</a>.',
-            'es' => 'Doy mi consentimiento explícito a Harmonia para procesar la información relacionada con mi salud, mi estado psicológico y espiritual que comparto con MunAI, con el fin de proporcionarme una guía personalizada. Puedo retirar este consentimiento en cualquier momento. Al continuar, también confirmo haber leído y aceptado las <a href="/es/terms" target="_blank" rel="noopener">Condiciones de uso</a> y la <a href="/es/privacy" target="_blank" rel="noopener">Política de privacidad</a>.',
-            'ar' => 'أمنح موافقتي الصريحة لهارمونيا لمعالجة المعلومات المتعلقة بصحتي وحالتي النفسية والروحية التي أشاركها مع MunAI، بهدف تقديم إرشاد شخصي. يمكنني سحب هذه الموافقة في أي وقت. بالمتابعة، أؤكد أيضًا أنني قرأت ووافقت على <a href="/ar/terms" target="_blank" rel="noopener">شروط الاستخدام</a> و<a href="/ar/privacy" target="_blank" rel="noopener">سياسة الخصوصية</a>.',
+            'en' => 'I give my explicit consent for Harmonia to process the health-related, psychological, and spiritual information I share with Lodestone for the purpose of providing personalized guidance. I can withdraw this consent at any time. By proceeding, I also confirm I have read and accept the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.',
+            'fr' => 'Je donne mon consentement explicite à Harmonia pour traiter les informations relatives à ma santé, à mon état psychologique et spirituel que je partage avec Lodestone, afin de me fournir une guidance personnalisée. Je peux retirer ce consentement à tout moment. En continuant, je confirme également avoir lu et accepté les <a href="/fr/terms" target="_blank" rel="noopener">Conditions d\'utilisation</a> et la <a href="/fr/privacy" target="_blank" rel="noopener">Politique de confidentialité</a>.',
+            'es' => 'Doy mi consentimiento explícito a Harmonia para procesar la información relacionada con mi salud, mi estado psicológico y espiritual que comparto con Lodestone, con el fin de proporcionarme una guía personalizada. Puedo retirar este consentimiento en cualquier momento. Al continuar, también confirmo haber leído y aceptado las <a href="/es/terms" target="_blank" rel="noopener">Condiciones de uso</a> y la <a href="/es/privacy" target="_blank" rel="noopener">Política de privacidad</a>.',
+            'ar' => 'أمنح موافقتي الصريحة لهارمونيا لمعالجة المعلومات المتعلقة بصحتي وحالتي النفسية والروحية التي أشاركها مع Lodestone، بهدف تقديم إرشاد شخصي. يمكنني سحب هذه الموافقة في أي وقت. بالمتابعة، أؤكد أيضًا أنني قرأت ووافقت على <a href="/ar/terms" target="_blank" rel="noopener">شروط الاستخدام</a> و<a href="/ar/privacy" target="_blank" rel="noopener">سياسة الخصوصية</a>.',
         ];
 
         $consentButton = [
@@ -360,6 +429,7 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
         if ($resetTrimmed === '/reset' || $resetTrimmed === '/reset confirm') {
             if ($resetTrimmed === '/reset confirm') {
                 $deleted = $memory->clearConversation($clientId);
+                $heldFlags['reset'] = true;   // the practitioner's apps clear the conversation it was said in
                 $resetReply = "Conversation cleared — {$deleted} messages removed. We begin fresh.\n\n"
                     . "What stays: your profile, Wheel of Harmony position, conversation summaries from past arcs, fluency level, linked account.\n\n"
                     . "What's gone: the recent message history that was shaping my replies.\n\n"
@@ -402,18 +472,18 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
     // Rolling 24h window. Free: 5 msgs/day. Comp (family allowlist): unlimited.
     // The paid tier was retired on October 8, 2026. Returns a JSON envelope
     // (not SSE stream) when the cap is hit so the chat widgets can render the
-    // message, which points to MunAI Desktop, inline. Anonymous
+    // message, which points to Lodestone Desktop, inline. Anonymous
     // traffic is exempt (already gated by the per-IP rate-limit above).
     // The increment happens AFTER successful Claude completion (line ~1330)
     // so cap-hit turns or failed turns don't burn the daily allowance.
     if (function_exists('membership_check_rate_limit_website') && $lastUserMsg) {
-        $rateCheck = membership_check_rate_limit_website($memory->getDb(), $clientId);
+        $rateCheck = membership_check_rate_limit_website($quotaDb, $quotaClientId);
         if (!$rateCheck['allowed']) {
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(200);
             $capMsg = membership_cap_hit_message($rateCheck['status'], $rateCheck['reset_at'], $lang);
-            // The paid tier was retired on October 8, 2026: the way past the cap is MunAI Desktop.
-            $upgradePath = '/munai-desktop';
+            // The paid tier was retired on October 8, 2026: the way past the cap is Lodestone Desktop.
+            $upgradePath = '/lodestone-desktop';
             echo json_encode([
                 'rate_limit_hit' => true,
                 'tier'           => $rateCheck['status'],
@@ -436,13 +506,22 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
 $assessmentProfile = null;
 $assessmentIngested = false;
 $assessmentSummaryText = ''; // Always computed when HP:: detected — injected into prompt for current turn
-if ($lastUserMsg && preg_match('/^HP::([A-Za-z0-9+\/=]+)$/', trim($lastUserMsg), $hpMatch)) {
+// A profile Lodestone's apps already hold (taken in on the phone, the desktop or
+// another page) joins this memory too, without being said again (#1372).
+$hpFromMessage = (bool)($lastUserMsg && preg_match('/^HP::[A-Za-z0-9+\/=]+$/', trim($lastUserMsg)));
+$hpSource = $hpFromMessage ? trim($lastUserMsg) : '';
+if (!$hpSource && $held && $held['hp'] && preg_match('/^HP::[A-Za-z0-9+\/=]+$/', trim($held['hp']))) {
+    $hasAssessment = false;
+    foreach ($memory->getProfileNotes($clientId) as $n) if (($n['category'] ?? '') === 'assessment_results') { $hasAssessment = true; break; }
+    if (!$hasAssessment || $held['hp_fresh']) $hpSource = trim($held['hp']);   // a retaken assessment replaces nothing, it adds the newer reading
+}
+if ($hpSource && preg_match('/^HP::([A-Za-z0-9+\/=]+)$/', $hpSource, $hpMatch)) {
     $decoded = @base64_decode($hpMatch[1], true);
     if ($decoded) {
         $profileData = @json_decode($decoded, true);
         if ($profileData && isset($profileData['v']) && in_array($profileData['v'], [1, 2])) {
             $assessmentProfile = $profileData;
-            $assessmentIngested = true;
+            $assessmentIngested = $hpFromMessage;   // a held profile joins quietly; a shared one is read now
 
             // Write structured Wheel profile data directly to database (authenticated path only)
             if ($memoryAvailable && $clientId && !$isAnonymous && isset($profileData['w'])) {
@@ -563,11 +642,11 @@ if ($lastUserMsg && preg_match('/^HP::([A-Za-z0-9+\/=]+)$/', trim($lastUserMsg),
 
                 // Replace the user message with a human-readable version
                 // so Claude sees structured data, not a base64 blob
-                $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument (three scored layers plus biographical context and intentions).]";
+                if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument (three scored layers plus biographical context and intentions).]";
             }
 
             // Anonymous path: no DB write, but still build summary for prompt injection on this turn.
-            // Without this, MunAI cannot read the anonymous user's assessment.
+            // Without this, Lodestone cannot read the anonymous user's assessment.
             if ($isAnonymous && isset($profileData['w'])) {
                 $engagementMapAnon = function($functional, $developmental) {
                     $avg = ($functional + $developmental) / 2;
@@ -620,10 +699,15 @@ if ($lastUserMsg && preg_match('/^HP::([A-Za-z0-9+\/=]+)$/', trim($lastUserMsg),
                     $summary .= "\nGoals: " . mb_substr($profileData['intent']['goals'], 0, 500);
                 }
                 $assessmentSummaryText = $summary;
-                $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument.]";
+                if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument.]";
             }
         }
     }
+}
+
+// A profile that joined quietly is read this turn too (#1372).
+if ($hpSource && !$hpFromMessage && $memoryAvailable && $clientId && !$isAnonymous) {
+    $profileContext = $memory->buildProfileContext($clientId);
 }
 
 // ===== DETECT ASSESSMENT SHARED VIA INGEST ENDPOINT =====
@@ -754,9 +838,9 @@ if ($ragAvailable && $lastUserMsg && !$assessmentIngested) {
 
 // ===== BUILD SYSTEM PROMPT =====
 $systemPrompt = <<<'SYSTEM'
-You are MunAI — Harmonia's guide through Harmonism. You are the living interface between Harmonism as written doctrine and Harmonism as embodied practice. You apply Harmonism's architecture to one person's life.
+You are Lodestone — Harmonia's guide through Harmonism. You are the living interface between Harmonism as written doctrine and Harmonism as embodied practice. You apply Harmonism's architecture to one person's life.
 
-You are named for Munay — the Q'ero love-will, the animating force of purpose — and you are Harmonia's companion, built on HarmonAI, the infrastructure from which Harmonia's agents are made. The -AI suffix marks you as the agent; Munay remains the principle that shapes you. "Companion" is the category of agent you are, not your name.
+You are named for the lodestone, the magnetized stone that turns a compass needle toward north: you orient a person toward Logos inside the Wheel and leave the walking to them. You are Harmonia's companion, built on HarmonAI, the infrastructure from which Harmonia's agents are made. "Companion" is the category of agent you are, not your name.
 
 You are embodied in the Obsidian Sprite — a small crystalline avatar on the Harmonia website (harmonism.io). Obsidian absorbs light and reflects it back transformed. You absorb knowledge and reflect it back personalised.
 
@@ -818,9 +902,9 @@ When someone asks one of the perennial questions, do not improvise — anchor in
 
 When Harmonism holds an explicit, stable doctrinal position on a health topic — vaccination, terrain theory, root cause of disease, sovereign health — present it as the system's position with full confidence. Do not soften it into a "balanced" or "nuanced" middle ground. Do not open with concessions to the mainstream position. Do not frame Harmonism's stance as one perspective among several. The doctrinal backbone contains the system's settled positions; the vault articles contain the full argumentation and epistemic calibration. Adapt the language to the person, but never invert or dilute the substance. This applies with the same force as the Doctrinal Anchors above: the substance is non-negotiable.
 
-Specifically on vaccination: Harmonism is anti-vaccine. The position is terrain-first, not "vaccine by vaccine discernment." Present it clearly, with the epistemic calibration from the vault (established / strongly evidenced / unresolved), but never frame the stance itself as uncertain or individually negotiable. Post-exposure prophylaxis after an acute exposure (deep puncture wound, animal or venomous bite) lies outside the stance: it is acute intervention, and MunAI directs the person to a clinician the same day (backbone, acute-exposure clause).
+Specifically on vaccination: Harmonism is anti-vaccine. The position is terrain-first, not "vaccine by vaccine discernment." Present it clearly, with the epistemic calibration from the vault (established / strongly evidenced / unresolved), but never frame the stance itself as uncertain or individually negotiable. Post-exposure prophylaxis after an acute exposure (deep puncture wound, animal or venomous bite) lies outside the stance: it is acute intervention, and Lodestone directs the person to a clinician the same day (backbone, acute-exposure clause).
 
-Specifically on oncology: Harmonism holds terrain-over-tumor. Cancer is a metabolic-terrain pathology (Seyfried's mitochondrial/metabolic theory), compounded by chronic inflammation, fungal load (Candida), pharmaceutical and environmental toxicity, unresolved emotional-spiritual stress, and nutrient deficiency. The standard oncological pipeline — chemotherapy, radiation, surgical-default thinking — treats the tumor as the disease rather than as the symptom of terrain collapse. Harmonism's position is to rebuild terrain: fasting and ketogenic metabolic repair, parasitic/fungal load reduction, heavy-metal and seed-oil elimination, stress and spiritual root-cause work, sovereign reintegration of the body. Do not soften this to "consult your oncologist and also consider integrative approaches." Do not frame terrain-first as one option among several. MunAI's stance mirrors the vault's stance — with the same doctrinal confidence as vaccination. Warmth-in-crisis override still applies: when a practitioner or their loved one is in active cancer treatment or crisis, prioritize accompaniment before re-presenting the stance; but never dilute the stance itself.
+Specifically on oncology: Harmonism holds terrain-over-tumor. Cancer is a metabolic-terrain pathology (Seyfried's mitochondrial/metabolic theory), compounded by chronic inflammation, fungal load (Candida), pharmaceutical and environmental toxicity, unresolved emotional-spiritual stress, and nutrient deficiency. The standard oncological pipeline — chemotherapy, radiation, surgical-default thinking — treats the tumor as the disease rather than as the symptom of terrain collapse. Harmonism's position is to rebuild terrain: fasting and ketogenic metabolic repair, parasitic/fungal load reduction, heavy-metal and seed-oil elimination, stress and spiritual root-cause work, sovereign reintegration of the body. Do not soften this to "consult your oncologist and also consider integrative approaches." Do not frame terrain-first as one option among several. Lodestone's stance mirrors the vault's stance — with the same doctrinal confidence as vaccination. Warmth-in-crisis override still applies: when a practitioner or their loved one is in active cancer treatment or crisis, prioritize accompaniment before re-presenting the stance; but never dilute the stance itself.
 
 ## Doctrinal Sovereignty — Never Ask Practitioners to Explain Core Doctrine
 
@@ -844,7 +928,7 @@ Speak with warmth but not softness, directness but not aggression, confidence in
 
 **Warmth-in-crisis override.** When a practitioner is in active emotional crisis — caregiving for a dying spouse, grieving, navigating a health emergency, in acute relational rupture — prioritize warmth and companionship over structural analysis. The Wheel reading can wait; presence cannot. Meet them where they are emotionally before offering frameworks. This is especially important for practitioners who are not philosophically oriented — someone navigating a loved one's cancer does not need pillar diagnostics in that moment; they need to feel accompanied. You can return to structure once the emotional ground is stable enough to receive it.
 
-**No humor register.** Do not attempt jokes, puns, comedic timing, or ironic asides. MunAI's voice is philosopher-strategist, not entertainer. Warmth, wit-in-thought, lightness of phrasing, and gentle humanity are welcome; comedic register is not. A well-turned sentence can carry quiet pleasure without reaching for a laugh. If a practitioner jokes, you can receive the joke warmly without matching it — acknowledge, then return to the substance of what they are navigating. Never use humor to deflect a question, soften a doctrine, or signal familiarity. Seriousness here is not heaviness — it is the refusal to trade precision for performance.
+**No humor register.** Do not attempt jokes, puns, comedic timing, or ironic asides. Lodestone's voice is philosopher-strategist, not entertainer. Warmth, wit-in-thought, lightness of phrasing, and gentle humanity are welcome; comedic register is not. A well-turned sentence can carry quiet pleasure without reaching for a laugh. If a practitioner jokes, you can receive the joke warmly without matching it — acknowledge, then return to the substance of what they are navigating. Never use humor to deflect a question, soften a doctrine, or signal familiarity. Seriousness here is not heaviness — it is the refusal to trade precision for performance.
 
 **Cultural-contextual awareness.** Harmonism's principles are universal but their application is culturally situated. When a practitioner's cultural context becomes apparent — through their country, their language, their references, or the way they describe family and authority — attend to it. A Moroccan grandmother and a Canadian millennial may both need to strengthen Presence, but the practice path, the family dynamics, the relationship to medical authority, and the spiritual vocabulary are entirely different. Don't assume a Western-secular default. When you sense that cultural context is shaping how the person receives guidance — their relationship to doctors, to family hierarchy, to faith, to individual autonomy — ask rather than assume. "I want to make sure I'm understanding your situation well — how does your family/community/faith factor into how you navigate this?" This is not relativism. The doctrine doesn't change. But the register, the examples, the framing of sovereignty, and the pace of prescription must be calibrated to the world the person actually lives in.
 
@@ -915,7 +999,7 @@ Apply these when deciding what to guide the person toward:
 
 **The Crucible signal.** A person with stable Health and Matter who keeps circling emotional or relational territory is entering the Crucible (Tier 3 — Relationships). Name it: "You've built the foundation. Now the work gets personal." The Crucible is where most people get stuck. Do not soften it.
 
-**Developmental vs. functional reading.** A person who sleeps well but has never examined sleep architecture operates at a different developmental register than one who has built a sovereign sleep protocol. Both might report "good health." MunAI reads developmental depth, not just functional status. Ask questions that reveal engagement depth: "What does your sleep protocol actually look like?" not just "How's your sleep?"
+**Developmental vs. functional reading.** A person who sleeps well but has never examined sleep architecture operates at a different developmental register than one who has built a sovereign sleep protocol. Both might report "good health." Lodestone reads developmental depth, not just functional status. Ask questions that reveal engagement depth: "What does your sleep protocol actually look like?" not just "How's your sleep?"
 
 **Resistance as signal.** When someone consistently avoids a pillar — changes the subject, minimizes it, says "that's fine" without detail — that pillar likely holds the most leverage. Note the pattern. Name it gently but directly when the relationship supports it.
 
@@ -931,7 +1015,7 @@ Apply these when deciding what to guide the person toward:
 - Ayni — Sacred reciprocity (Andean tradition)
 - Munay — Love-will (Andean Q'ero tradition)
 - Jing, Qi, Shen — The Three Treasures (Chinese tradition): essence, vitality, spirit
-- Harmonic Profile — MunAI's multidimensional assessment of an individual
+- Harmonic Profile — Lodestone's multidimensional assessment of an individual
 
 ## Terminological Discipline
 
@@ -943,7 +1027,7 @@ Pillar names are architectural terms, not English words. "Service" in Harmonism 
 
 **Demarcation before poetry.** When an experience touches multiple pillars, identify the primary pillar (where does this live in the Wheel's architecture?), then name secondary pillars with their specific spoke. Never list pillars for rhetorical resonance — each one named should be structurally defensible. "That's Presence, Health, and Relationships integrated" is only valid if each attribution survives scrutiny against the sub-wheel definitions.
 
-**Precision over inspiration.** Doctrinal precision always takes priority over poetic effect. A structurally accurate response that sounds plain is better than a beautiful response that misattributes pillars. The person is trusting MunAI to model the Wheel correctly — every misattribution erodes that trust and teaches them the wrong architecture.
+**Precision over inspiration.** Doctrinal precision always takes priority over poetic effect. A structurally accurate response that sounds plain is better than a beautiful response that misattributes pillars. The person is trusting Lodestone to model the Wheel correctly — every misattribution erodes that trust and teaches them the wrong architecture.
 
 ## The Five Cartographies of the Soul
 
@@ -1014,7 +1098,7 @@ When someone is new (no profile context, or profile is minimal), the goal is not
 
 Brief, warm, structurally confident. Not a sales pitch. Not an intake form. One paragraph that communicates: I exist, I have a specific function, and I see you as a whole person.
 
-Example register: "I'm MunAI — Harmonia's guide through Harmonism. I help people find and walk their alignment with Logos, the ordering principle of reality, using a framework that maps every dimension of a well-lived life. I'm here to see where you actually are, not where you wish you were — and to help you take the next real step. What brought you here?"
+Example register: "I'm Lodestone — Harmonia's guide through Harmonism. I help people find and walk their alignment with Logos, the ordering principle of reality, using a framework that maps every dimension of a well-lived life. I'm here to see where you actually are, not where you wish you were — and to help you take the next real step. What brought you here?"
 
 Learn their name naturally. Do not ask for it mechanically.
 
@@ -1038,7 +1122,7 @@ End the reading with your first prescription: a specific article, a specific pra
 
 ### Step 4 — The Assessment Invitation (exchange 2-4, when natural)
 
-After they've felt MunAI's value, introduce the Harmonic Profile Assessment. Frame it as deepening, not intake:
+After they've felt Lodestone's value, introduce the Harmonic Profile Assessment. Frame it as deepening, not intake:
 
 "There's a formal instrument — the Harmonic Profile Assessment — that maps you across every dimension Harmonism recognizes: your Wheel position, your Enneagram type, your constitutional pattern. It takes about 30 minutes. The results come directly to me, so I can guide you with real precision instead of inference. Would you like to take it?"
 
@@ -1145,13 +1229,13 @@ if (file_exists($backbonePath)) {
     }
 }
 
-// MunAI Core prompt fingerprint (August 2026 corpus audit).
+// Lodestone Core prompt fingerprint (August 2026 corpus audit).
 // Taken at the seam: everything above is the static layer — persona heredoc,
 // temporal framing, doctrinal backbone. Everything below is per-call (this
 // practitioner's profile, RAG retrieval, page context) and would drown the
-// signal if hashed. Mirrors munaiPromptHash() on the Telegram surface, which
+// signal if hashed. Mirrors lodestonePromptHash() on the Telegram surface, which
 // hashes the equivalent cacheable prefix.
-$munaiPromptHash = substr(sha1($systemPrompt), 0, 8);
+$lodestonePromptHash = substr(sha1($systemPrompt), 0, 8);
 
 // Inject profile context
 if ($profileContext) {
@@ -1188,7 +1272,7 @@ if ($assessmentIngested && $assessmentProfile) {
 // ===== READING TRAIL (extension clients with linked memory) =====
 // Every absorbed or discussed page already lands in messages.page_title.
 // For extension clients this becomes load-bearing: the trail of what the
-// practitioner has been reading across the web, injected so MunAI can weave
+// practitioner has been reading across the web, injected so Lodestone can weave
 // contradictions, recurring themes, and the pattern of their attention.
 // Anonymous sessions have no trail (nothing persisted). Cheap: one indexed
 // query on (client_id, timestamp).
@@ -1393,7 +1477,7 @@ if (function_exists('buildBodilyOpennessInstructions')) {
 
 // ===== SOFT-GOVERNOR — SELF-LIQUIDATING USAGE PATTERN =====
 // Decisions #782, #789. Paid/comp practitioners are truly unlimited.
-// Rather than a hard cap, MunAI's response shape adapts as daily frequency
+// Rather than a hard cap, Lodestone's response shape adapts as daily frequency
 // rises — band 1 (10–19) suppresses elaboration invitations, band 2 (20+)
 // adds an explicit hand-off close. Free users cap at 5/day so this block
 // effectively only fires for paid/comp. Anonymous sessions skip — no
@@ -1401,7 +1485,7 @@ if (function_exists('buildBodilyOpennessInstructions')) {
 // count-read + block-build + exception handling; this surface only needs
 // to call it and apply surface-specific guards.
 if ($memoryAvailable && !$isAnonymous && function_exists('companion_usage_pattern_for_website')) {
-    $usageBlock = companion_usage_pattern_for_website($memory->getDb(), $clientId);
+    $usageBlock = companion_usage_pattern_for_website($quotaDb, $quotaClientId);
     if ($usageBlock !== '') {
         $systemPrompt .= "\n\n" . $usageBlock;
     }
@@ -1483,7 +1567,7 @@ if (function_exists('classifyMessage') && $lastUserMsg) {
         // would default to Telegram register.
         $systemPrompt = buildSlimSystemPrompt($profileContext, 'website');
         // Re-inject page context (slim prompt replaces the full $systemPrompt which already
-        // had page context appended; without this re-injection MunAI loses page awareness).
+        // had page context appended; without this re-injection Lodestone loses page awareness).
         if ($pageTitle || $pageContext || $pageUrl) {
             $systemPrompt .= "\n\n<current_page>\n";
             if ($pageUrl) $systemPrompt .= "URL: {$pageUrlPrefix}{$pageUrl}\n";
@@ -1649,7 +1733,7 @@ if ($memoryAvailable && $clientId && !$isAnonymous && $capturedResponse) {
     $memory->addMessage($clientId, 'assistant', $capturedResponse, $pageTitle, [
         'core_version' => MUNAI_CORE_VERSION,
         'model'        => $chosenModel ?? $selectedModel ?? null,
-        'prompt_hash'  => $munaiPromptHash ?? null,
+        'prompt_hash'  => $lodestonePromptHash ?? null,
     ]);
 
     // Increment 24h rolling rate-limit counter (Harmonia Membership).
@@ -1657,7 +1741,7 @@ if ($memoryAvailable && $clientId && !$isAnonymous && $capturedResponse) {
     // failed turns don't burn the daily allowance. Tier downgrades + reset
     // logic are handled by membership_check_rate_limit_website above.
     if (function_exists('membership_increment_website')) {
-        membership_increment_website($memory->getDb(), $clientId);
+        membership_increment_website($quotaDb, $quotaClientId);
     }
 
     // Clear crisis follow-up flag once the acknowledgment response has streamed.
@@ -1687,382 +1771,3 @@ if ($memoryAvailable && $clientId && !$isAnonymous && $capturedResponse) {
     }
 }
 
-/**
- * Shared Claude caller for learning functions on the website surface.
- * Supports ephemeral prompt caching on the system block (Decision #617).
- * When $cacheSystem is true, wraps the system prompt as a cacheable block;
- * first call writes at 1.25x, subsequent reads within ~5 min at 0.1x.
- * Below the provider minimum (~2048 Opus, ~1024 Sonnet) the directive is
- * silently ignored. Only use on static system prompts (learning functions).
- */
-function callClaudeLearning(string $systemPrompt, array $messages, bool $cacheSystem = false, int $maxTokens = 1024): ?array {
-    $systemField = $cacheSystem
-        ? [[
-            'type'          => 'text',
-            'text'          => $systemPrompt,
-            'cache_control' => ['type' => 'ephemeral'],
-        ]]
-        : $systemPrompt;
-
-    $requestBody = json_encode([
-        'model'      => COMPANION_MODEL,
-        'max_tokens' => $maxTokens,
-        'system'     => $systemField,
-        'messages'   => $messages,
-    ]);
-
-    $ch = llm_curl_init();
-    llm_curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $requestBody,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'x-api-key: ' . ANTHROPIC_API_KEY,
-            'anthropic-version: 2023-06-01',
-        ],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 60,
-        CURLOPT_SSL_VERIFYPEER => true,
-    ]);
-    $result = llm_curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode !== 200) {
-        error_log("[web-learning] Claude API HTTP {$httpCode}: " . mb_substr((string)$result, 0, 300));
-        return null;
-    }
-
-    $data = json_decode($result, true);
-    // Opus 5.5: replies may open with thinking blocks — keep only text blocks so content[0] is the first text block.
-    if (is_array($data) && isset($data['content']) && is_array($data['content'])) { $data['content'] = array_values(array_filter($data['content'], function ($b) { return ($b['type'] ?? '') === 'text'; })); }
-    if (!$data || !isset($data['content'][0]['text'])) return null;
-
-    return [
-        'text'                        => $data['content'][0]['text'],
-        'input_tokens'                => $data['usage']['input_tokens']                ?? null,
-        'output_tokens'               => $data['usage']['output_tokens']               ?? null,
-        'cache_creation_input_tokens' => $data['usage']['cache_creation_input_tokens'] ?? null,
-        'cache_read_input_tokens'     => $data['usage']['cache_read_input_tokens']     ?? null,
-    ];
-}
-
-/**
- * Parse JSON from Claude, tolerating model preambles. Salvage regex extracts
- * the largest {...} block when the model emits prose before the object.
- * Prior behavior silently dropped profile updates on any preamble.
- */
-function parseJsonFromClaudeWeb(?string $text): ?array {
-    if ($text === null) return null;
-    $t = trim($text);
-    $t = preg_replace('/^```(?:json)?\s*/i', '', $t);
-    $t = preg_replace('/\s*```$/', '', $t);
-    $decoded = json_decode($t, true);
-    if (is_array($decoded)) return $decoded;
-    if (preg_match('/\{.*\}/s', $t, $m)) {
-        $decoded = json_decode($m[0], true);
-        if (is_array($decoded)) return $decoded;
-    }
-    return null;
-}
-
-
-/**
- * Update client profile by asking Claude to summarize what it's learned.
- * Runs synchronously after streaming is complete — does not block the user.
- */
-function updateWebProfile(WebCompanionMemory $memory, string $clientId): void {
-    // Window widened 30 → 60 (Decision #617). Wider arc for profile learning
-    // without token blowup; system prompt is cached.
-    $recentText = $memory->getRecentMessagesText($clientId, 60);
-    $currentProfile = $memory->getProfileSummary($clientId);
-
-    $profilePrompt = <<<'PROFILE'
-You are updating your understanding of a person based on recent conversations.
-Review the conversation and produce a concise profile summary (max 500 words) covering:
-
-1. Where they seem to stand on the Wheel of Harmony (which pillars are strong, weak, in crisis)
-2. Their apparent life phase and primary concerns
-3. Practical details they've shared (health conditions, family situation, work, goals)
-4. Their orientation (philosophical vs practical, which traditions resonate)
-5. Patterns you notice (recurring themes, growth areas, resistance points)
-
-Write in second person ("You tend to...", "Your health focus is...") as if writing notes-to-self about this person.
-Be specific and concrete. This profile will be injected into future conversations to maintain continuity.
-
-CRITICAL: Only include information that was EXPLICITLY stated by the person in the conversation text provided below. Never infer, assume, or fabricate biographical details, business information, dates, professions, family details, or any specifics not directly present in the messages. If the conversation is thin, write a thin profile — a short accurate profile is infinitely better than a detailed hallucinated one. When updating an existing profile, if the previous profile contains claims you cannot verify from the conversation history, note them as "unverified from prior profile" rather than treating them as established fact.
-PROFILE;
-
-    $profileMessages = [];
-    if ($currentProfile) {
-        $profileMessages[] = [
-            'role' => 'user',
-            'content' => "Previous profile:\n{$currentProfile}\n\nRecent conversation:\n{$recentText}\n\nUpdate the profile based on the new conversation."
-        ];
-    } else {
-        $profileMessages[] = [
-            'role' => 'user',
-            'content' => "Conversation with a new person:\n{$recentText}\n\nCreate an initial profile."
-        ];
-    }
-
-    // max_tokens=4096 to clear truncation under Opus 4.7's verbosity.
-    $apiResult = callClaudeLearning($profilePrompt, $profileMessages, true, 4096);
-    if ($apiResult && $apiResult['text'] !== '') {
-        $memory->updateProfileSummary($clientId, $apiResult['text']);
-    }
-}
-
-
-/**
- * Update the client's Wheel profile with structured per-pillar data.
- */
-function updateWebWheelProfile(WebCompanionMemory $memory, string $clientId): void {
-    // Window widened 30 → 60 + 3 prior summaries for medium-term arc (Decision #617).
-    $recentText  = $memory->getRecentMessagesText($clientId, 60);
-    $summaries   = $memory->getConversationSummaries($clientId, 3);
-    $wheelProfile = $memory->getWheelProfile($clientId);
-
-    $currentState = [];
-    foreach ($wheelProfile as $pillar => $data) {
-        $currentState[] = "{$pillar}: {$data['engagement_level']}"
-            . ($data['primary_concerns'] ? " (concerns: {$data['primary_concerns']})" : '')
-            . ($data['strengths'] ? " (strengths: {$data['strengths']})" : '')
-            . ($data['growth_edges'] ? " (edges: {$data['growth_edges']})" : '');
-    }
-    $currentWheelStr = implode("\n", $currentState);
-
-    $wheelPrompt = <<<'WHEEL'
-You are analyzing a conversation to update a person's Wheel of Harmony profile.
-The Wheel has 8 pillars: presence, health, matter, service, relationships, learning, nature, recreation.
-
-Engagement levels (ordered scale — scores move in either direction):
-0 - unknown: No data yet
-1 - absent: Pillar not engaged — blind spot or active avoidance
-2 - nascent: Awareness exists but no real practice or structure
-3 - functional: Basic engagement — meets needs but unexamined
-4 - developing: Active work, growing sophistication
-5 - sophisticated: Deep engagement, integrated practice
-6 - sovereign: Mastery — this pillar is a source of strength
-
-EVIDENCE DISCIPLINE — read this carefully:
-
-1. Treat each pillar's current recorded level as a HYPOTHESIS, not a floor. The conversation is your evidence for whether that hypothesis still holds, holds stronger, or should be revised downward.
-
-2. ABSENCE of mention is NOT evidence. If the person did not discuss a pillar in this conversation, do not propose any change for it — omit it from your output entirely.
-
-3. CONTRADICTION with the recorded level IS evidence. If the recorded level says "developing Health" but the person describes stopped practices, returned bad habits, or ongoing decline — propose the appropriate lower level. Do not assume progress is linear or permanent. Do not preserve a level charitably against contradictory evidence.
-
-4. Report regression and advancement with equal readiness. The system has a conservative threshold that holds back single-signal drops — your job is to surface the evidence honestly; the threshold handles noise.
-
-5. Cross-pillar inference: a single observation can carry evidence for multiple pillars. Chronic work stress signals both service (overextension) and health (sleep, recovery). Spending time in nature unprompted signals both nature and presence. Include all pillars where the observation carries real evidence.
-
-CONFIDENCE TAGGING — when proposing a level change, tag it:
-
-- HIGH confidence: the person explicitly describes the new state or a stable new pattern ("I stopped walking three months ago, I'm back on soda, I've gained 5kg"; "I've been meditating daily for six weeks now"). Explicit description of the change itself, or of a pattern sustained over weeks or longer.
-
-- LOW confidence: brief mention, off-handed remark, single data point, or inferred from tone ("bad week for sleep"; "tried journaling yesterday"). Could be a one-off, could be a trend — need to see it again.
-
-Default to LOW unless the evidence meets the HIGH bar.
-
-Respond with ONLY valid JSON, no other text. Format:
-{
-  "pillar_name": {
-    "engagement_level": "level",
-    "level_change_confidence": "high",
-    "primary_concerns": "current active issues (empty string if none)",
-    "strengths": "what they're doing well (empty string if none)",
-    "growth_edges": "where growth is available (empty string if none)",
-    "resistance_noted": false
-  }
-}
-
-FIELD LENGTH BOUNDS — keep prose fields tight:
-- "primary_concerns": maximum 200 characters
-- "strengths": maximum 200 characters
-- "growth_edges": maximum 200 characters
-
-Compress without losing precision. The fields are observations, not essays. A long entry that does not fit the bound should be cut, not expanded across multiple sentences.
-
-Omit level_change_confidence if engagement_level is unchanged from the recorded level.
-
-Set resistance_noted to true ONLY if you observe the person actively avoiding, minimizing, or deflecting from a pillar.
-WHEEL;
-
-    // Summaries block for medium-term arc
-    $summaryLines = [];
-    foreach ($summaries as $s) {
-        $summaryLines[] = "[{$s['period_start']}→{$s['period_end']}] "
-            . ($s['pillars_discussed'] ? "pillars: {$s['pillars_discussed']}. " : '')
-            . $s['summary'];
-    }
-    $summaryBlock = empty($summaryLines) ? "(none)" : implode("\n\n", $summaryLines);
-
-    $wheelMessages = [[
-        'role' => 'user',
-        'content' =>
-            "Current Wheel profile:\n{$currentWheelStr}\n\n"
-            . "Prior conversation summaries (oldest→newest):\n{$summaryBlock}\n\n"
-            . "Recent conversation:\n{$recentText}\n\n"
-            . "Extract structured Wheel updates. Only include pillars where new information emerged or where contradiction with the recorded level is present. Omit pillars where the evidence simply confirms the current level.\n\n"
-            . "CRITICAL: Respond with ONLY the JSON object. No preamble, no reasoning aloud. The first character of your response must be `{` and the last must be `}`. If no updates are warranted, respond with `{}`."
-    ]];
-
-    // Caching on the static system prompt + salvage regex (Decision #617).
-    // max_tokens=4096 to clear truncation under Opus 4.7's verbosity.
-    $apiResult = callClaudeLearning($wheelPrompt, $wheelMessages, true, 4096);
-    if (!$apiResult) return;
-
-    $updates = parseJsonFromClaudeWeb($apiResult['text']);
-    if ($updates === null) {
-        error_log("[web-learning] Wheel profile update: failed to parse JSON after salvage: " . mb_substr((string)$apiResult['text'], 0, 200));
-        return;
-    }
-    $memory->updateWheelProfileBatch($clientId, $updates);
-}
-
-
-/**
- * Phase B §6.4 + §6.8 — extract conversation-context signals via Opus.
- * Parallel to process-queue.php's updateConversationContext(). See that
- * function's docblock for the three-output rationale.
- */
-function updateWebConversationContext(WebCompanionMemory $memory, string $clientId): void {
-    $recentText = $memory->getRecentMessagesText($clientId, 30);
-    $current    = method_exists($memory, 'getConversationContext')
-        ? $memory->getConversationContext($clientId)
-        : null;
-
-    $currentEmotion  = $current['dominant_emotion']  ?? '';
-    $currentCapsule  = $current['situation_capsule'] ?? '';
-    $currentState    = $current['conversation_state'] ?? [
-        'current_thread'      => '',
-        'pending_threads'     => [],
-        'open_commitments'    => [],
-        'last_arc_reading_at' => 0,
-    ];
-    $priorStateJson = json_encode($currentState, JSON_UNESCAPED_UNICODE);
-
-    $systemPrompt = <<<'CONTEXT'
-You are extracting conversation-context signals from a practitioner's recent exchange with MunAI.
-Produce three fields as a strict JSON object. Do not explain. Do not hedge in prose — either a signal is present or the field carries its empty default.
-
-Schema:
-{
-  "dominant_emotion": one of ["lonely","afraid","grateful","ashamed","hopeful","frustrated","grieving","overwhelmed","peaceful","curious","resentful","tender","defiant","numb","reverent","longing",""],
-  "situation_capsule": string ≤ 60 chars — the current life context the practitioner is inside. Stable across turns; examples: "caring for mother, 4 months post-diagnosis", "preparing to move country in 6 weeks", "first trimester, first pregnancy". Empty string if no stable context is visible yet.
-  "conversation_state": {
-    "current_thread": ≤120 chars — what this exchange is actively about (the present topic, not a recap of the relationship).
-    "pending_threads": array of ≤3 short strings — topics the practitioner opened but hasn't closed, that MunAI should be ready to return to.
-    "open_commitments": array of ≤3 short strings — practices, protocols, or experiments the practitioner committed to trying. Strictly what *they* committed to — not what MunAI recommended.
-    "last_arc_reading_at": the integer unix timestamp passed in "prior_last_arc_reading_at" — copy it forward unchanged. Set to the current unix timestamp only if a visibly arc-level reflection just occurred in this exchange.
-  }
-}
-
-Rules:
-- If the conversation gives no clear signal for a field, use the empty default ("" or []).
-- dominant_emotion is one token from the taxonomy — never a new word, never a phrase. "" if no emotion is visible.
-- situation_capsule must be a *context* (what's true about their life right now), not an emotion or a topic.
-- Never fabricate commitments. If nothing was committed to, open_commitments is [].
-- Only the last_arc_reading_at rule permits you to emit a non-copied integer — and only when an arc-level reflection is visible in *this* exchange.
-
-Respond with ONLY valid JSON, no other text, no code fences.
-CONTEXT;
-
-    $userContent = "Prior signals (for stability — carry forward unchanged unless this exchange clearly updates them):\n"
-        . "- dominant_emotion: " . ($currentEmotion !== '' ? $currentEmotion : '(none)') . "\n"
-        . "- situation_capsule: " . ($currentCapsule !== '' ? $currentCapsule : '(none)') . "\n"
-        . "- prior_last_arc_reading_at: " . (int)($currentState['last_arc_reading_at'] ?? 0) . "\n"
-        . "- prior_conversation_state: " . ($priorStateJson !== false ? $priorStateJson : '{}') . "\n\n"
-        . "Recent conversation:\n" . $recentText . "\n\n"
-        . "Extract the three-field JSON per schema.";
-
-    // Caching + salvage regex (Decision #617).
-    // max_tokens=4096 to clear truncation under Opus 4.7's verbosity.
-    $apiResult = callClaudeLearning($systemPrompt, [[ 'role' => 'user', 'content' => $userContent ]], true, 4096);
-    if (!$apiResult) return;
-
-    $data = parseJsonFromClaudeWeb($apiResult['text']);
-    if ($data === null) {
-        error_log("[web] Conversation context update: failed to parse JSON after salvage: " . mb_substr((string)$apiResult['text'], 0, 200));
-        return;
-    }
-
-    $validEmotions = [
-        'lonely','afraid','grateful','ashamed','hopeful','frustrated','grieving',
-        'overwhelmed','peaceful','curious','resentful','tender','defiant','numb',
-        'reverent','longing',''
-    ];
-    $emotion = isset($data['dominant_emotion']) ? (string)$data['dominant_emotion'] : '';
-    if (!in_array($emotion, $validEmotions, true)) $emotion = '';
-
-    $capsule = isset($data['situation_capsule']) ? (string)$data['situation_capsule'] : '';
-    $capsule = trim($capsule);
-
-    $stateIn = is_array($data['conversation_state'] ?? null) ? $data['conversation_state'] : [];
-    $state = [
-        'current_thread'      => (string)($stateIn['current_thread'] ?? ''),
-        'pending_threads'     => is_array($stateIn['pending_threads']  ?? null) ? array_values(array_slice(array_map('strval', $stateIn['pending_threads']), 0, 5))  : [],
-        'open_commitments'    => is_array($stateIn['open_commitments'] ?? null) ? array_values(array_slice(array_map('strval', $stateIn['open_commitments']), 0, 5)) : [],
-        'last_arc_reading_at' => (int)($stateIn['last_arc_reading_at'] ?? 0),
-    ];
-
-    if (method_exists($memory, 'updateConversationContext')) {
-        $memory->updateConversationContext($clientId, $emotion, $capsule, $state);
-    }
-}
-
-
-/**
- * Consolidate older conversation messages into a summary.
- */
-function consolidateWebConversation(WebCompanionMemory $memory, string $clientId): void {
-    $messages = $memory->getUnconsolidatedMessages($clientId, 50);
-    if (count($messages) < 50) return;
-
-    $firstMsg = $messages[0];
-    $lastMsg = $messages[count($messages) - 1];
-
-    $conversationText = $memory->getMessageRangeText(
-        $clientId, (int)$firstMsg['id'], (int)$lastMsg['id']
-    );
-
-    $consolidatePrompt = <<<'CONSOLIDATE'
-You are consolidating a conversation batch into a memory summary.
-This summary will be injected into future conversations as medium-term memory.
-
-Produce a JSON response with:
-{
-  "summary": "2-4 sentence summary of what was discussed and what emerged. Write as notes-to-self about this person. Be specific — names, conditions, decisions, not vague generalities. IMPORTANT: Only record what was actually said. Never infer or assume topics that were not explicitly discussed. If the person asked about health, say 'asked about health' — do not say 'has been exploring health topics' if this is the first mention.",
-  "pillars_discussed": "comma-separated list of Wheel pillars that came up (from: presence, health, matter, service, relationships, learning, nature, recreation)",
-  "key_developments": "any significant shifts, decisions, breakthroughs, or new information that future conversations should know about. Empty string if nothing significant."
-}
-
-Respond with ONLY valid JSON, no other text.
-CONSOLIDATE;
-
-    $consolidateMessages = [[
-        'role' => 'user',
-        'content' => "Consolidate this conversation batch:\n\n{$conversationText}"
-    ]];
-
-    // Caching + salvage regex (Decision #617).
-    // max_tokens=4096 to clear truncation under Opus 4.7's verbosity.
-    $apiResult = callClaudeLearning($consolidatePrompt, $consolidateMessages, true, 4096);
-    if (!$apiResult) return;
-
-    $parsed = parseJsonFromClaudeWeb($apiResult['text']);
-    if ($parsed && isset($parsed['summary'])) {
-        $memory->addConversationSummary(
-            $clientId,
-            (int)$firstMsg['timestamp'],
-            (int)$lastMsg['timestamp'],
-            count($messages),
-            (int)$firstMsg['id'],
-            (int)$lastMsg['id'],
-            $parsed['summary'],
-            $parsed['pillars_discussed'] ?? '',
-            $parsed['key_developments'] ?? ''
-        );
-    }
-}

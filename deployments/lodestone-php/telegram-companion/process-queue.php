@@ -46,7 +46,7 @@ define('POLL_INTERVAL_US', 500_000);  // 0.5s between queue checks
 define('MAX_RUNTIME', 3600);          // Max worker lifetime in seconds (1 hour), then exit for watchdog restart
 define('MAX_JOBS_PER_CYCLE', 10);     // Safety cap per poll cycle
 
-// ===== MUNAI CORE VERSION =====
+// ===== LODESTONE CORE VERSION =====
 // The behavioural contract this surface delivers against. Bump when the
 // doctrinal backbone, either system prompt, the routing policy, or the memory
 // schema changes — and bump BOTH surfaces together (telegram-bot.php /
@@ -498,25 +498,25 @@ function processJob(array $job, CompanionMemory $memory): void {
     // for the practitioner's own next message this only matters when
     // they reply within seconds — and on that timescale the previous
     // message's learning was almost certainly going to run regardless.
-    // Stamp the row with the MunAI that produced it: declared Core version,
+    // Stamp the row with the Lodestone that produced it: declared Core version,
     // resolved model ID, and a fingerprint of the static system-prompt prefix.
     $memory->addMessage($chatId, 'assistant', $response, null, [
         'core_version' => MUNAI_CORE_VERSION,
         'model'        => $model,
-        'prompt_hash'  => munaiPromptHash($systemPrompt),
+        'prompt_hash'  => lodestonePromptHash($systemPrompt),
     ]);
 
     // ===== STEP 4b: SPOKEN REPLY (optional, additive) =====
     // The text is delivered and stored by this point. The voice is an extra
     // message after it and never a substitute: nothing here can delay, alter or
     // withhold the answer the practitioner is owed (#1145). Witness mode is read
-    // off the system prompt the webhook built — in acute activation MunAI stays
+    // off the system prompt the webhook built — in acute activation Lodestone stays
     // in text (#535, #1139). Crisis replies never reach this worker at all.
-    if (function_exists('munaiVoiceSendReply')) {
+    if (function_exists('lodestoneVoiceSendReply')) {
         $voiceMode = $memory->getVoiceMode($chatId);
         if ($voiceMode !== 'off') {
             $xaiKey = defined('XAI_API_KEY') && XAI_API_KEY !== '' && !str_contains(XAI_API_KEY, 'YOUR-') ? XAI_API_KEY : '';
-            $voice = munaiVoiceSendReply($chatId, $response, [
+            $voice = lodestoneVoiceSendReply($chatId, $response, [
                 'mode'           => $voiceMode,
                 'inbound_voice'  => (bool) ($job['inbound_voice'] ?? 0),
                 'witness'        => str_contains($systemPrompt, 'witness_mode_active'),
@@ -696,7 +696,7 @@ function stripLeadingTimestamp(string $text): string {
  * doctrinal and persona layer; two that differ did not, whatever version number
  * they declare.
  */
-function munaiPromptHash(string $systemPrompt): string {
+function lodestonePromptHash(string $systemPrompt): string {
     $prefix = $systemPrompt;
     if (defined('CACHE_BREAKPOINT_MARKER')) {
         $pos = strpos($systemPrompt, CACHE_BREAKPOINT_MARKER);
@@ -1578,7 +1578,7 @@ WHEEL;
  *
  * Three outputs:
  *   (1) dominant_emotion — one of a 16-emotion taxonomy. Purpose: condition tone
- *       and pacing of MunAI's next turn. Cheaper than re-deriving emotional
+ *       and pacing of Lodestone's next turn. Cheaper than re-deriving emotional
  *       register from scratch every message; surfaces drift to the prompt.
  *   (2) situation_capsule — ≤60-char free-text capsule naming the current life
  *       context ("caring for elderly mother, 4 months post-diagnosis"). Stable
@@ -1609,7 +1609,7 @@ function updateConversationContext(CompanionMemory $memory, int $chatId): void {
     $priorStateJson = json_encode($currentState, JSON_UNESCAPED_UNICODE);
 
     $systemPrompt = <<<'CONTEXT'
-You are extracting conversation-context signals from a practitioner's recent exchange with MunAI.
+You are extracting conversation-context signals from a practitioner's recent exchange with Lodestone.
 Produce three fields as a strict JSON object. Do not explain. Do not hedge in prose — either a signal is present or the field carries its empty default.
 
 Schema:
@@ -1618,8 +1618,8 @@ Schema:
   "situation_capsule": string ≤ 60 chars — the current life context the practitioner is inside. Stable across turns; examples: "caring for mother, 4 months post-diagnosis", "preparing to move country in 6 weeks", "first trimester, first pregnancy". Empty string if no stable context is visible yet.
   "conversation_state": {
     "current_thread": ≤120 chars — what this exchange is actively about (the present topic, not a recap of the relationship).
-    "pending_threads": array of ≤3 short strings — topics the practitioner opened but hasn't closed, that MunAI should be ready to return to.
-    "open_commitments": array of ≤3 short strings — practices, protocols, or experiments the practitioner committed to trying. Strictly what *they* committed to — not what MunAI recommended.
+    "pending_threads": array of ≤3 short strings — topics the practitioner opened but hasn't closed, that Lodestone should be ready to return to.
+    "open_commitments": array of ≤3 short strings — practices, protocols, or experiments the practitioner committed to trying. Strictly what *they* committed to — not what Lodestone recommended.
     "last_arc_reading_at": the integer unix timestamp passed in "prior_last_arc_reading_at" — copy it forward unchanged. Set to the current unix timestamp only if a visibly arc-level reflection just occurred in this exchange.
   }
 }

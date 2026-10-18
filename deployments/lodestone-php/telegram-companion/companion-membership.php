@@ -12,7 +12,7 @@
  *   paid       = active Stripe subscription (monthly | yearly | founder_monthly)
  *   comp       = complimentary access (beta tester first-year, etc.)
  *
- * Daily MunAI cap (rolling 24h):
+ * Daily Lodestone cap (rolling 24h):
  *   free: 10 messages/day (raised from 5, Decision #1329)
  *   paid: unlimited (rate-limit check short-circuits to allowed:true)
  *   comp: unlimited (treated identically to paid)
@@ -24,8 +24,8 @@
  * The actual enforcement path bypasses that value via the early-return in
  * membership_check_rate_limit_*. Decision #771 (May 8, 2026).
  *
- * Cross-surface unification: counter is per-identity (client_id for website,
- * telegram_id for Telegram). Linked accounts (Decision #466) propagate
+ * Cross-surface unification (superseded by #1349, below): the counter was
+ * per-identity (client_id for website, telegram_id for Telegram). Linked accounts (Decision #466) propagate
  * subscription_status across both DBs at sync time, but the rate-limit counter
  * is per-surface — practitioner gets 30 on each surface independently. This is
  * deliberate: a 30/day cap that splits across surfaces would be effectively
@@ -219,7 +219,7 @@ if (!function_exists('membership_resolve_tier_telegram')) {
 
 if (!function_exists('membership_daily_cap')) {
     /**
-     * Return the rolling-24h MunAI message cap for a given subscription status.
+     * Return the rolling-24h Lodestone message cap for a given subscription status.
      */
     function membership_daily_cap(string $status): int {
         switch ($status) {
@@ -229,6 +229,148 @@ if (!function_exists('membership_daily_cap')) {
             case 'free':
             default:
                 return 10;  // raised from 5 on October 14, 2026 (Decision #1329)
+        }
+    }
+}
+
+/* ===========================================================================
+ * One daily allowance per member, across every surface (Decision #1349).
+ *
+ * A free member has ten messages in a rolling 24 hours in total: the website,
+ * Telegram (once linked to the account) and Lodestone desktop's hosted mode draw
+ * on the same count. The count is keyed on the member's verified email, never
+ * on an identifier the client chooses:
+ *   website   the email stamped on the client row, which only a verified
+ *             sign-in writes (companion-consent.php, or companion-api.php
+ *             when the request carries a valid Supabase token);
+ *   Telegram  the email verified through /link (linked_accounts.verified = 1);
+ *   desktop   the email in the Supabase token the app signs in with.
+ * A website row with no email yet (pre-consent, grandfathered) and an unlinked
+ * Telegram user fall back to their own key, as before.
+ *
+ * The store is one SQLite file outside public_html, shared by both surfaces.
+ * When it cannot be opened the per-surface columns are used, as before.
+ * =========================================================================== */
+
+if (!function_exists('membership_usage_db')) {
+    function membership_usage_db(): ?PDO {
+        static $db = false;
+        if ($db !== false) return $db;
+        $path = defined('MEMBER_USAGE_DB') ? MEMBER_USAGE_DB : '/home/SERVER_USER/member-usage.db';
+        try {
+            $db = new PDO('sqlite:' . $path);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $db->exec('PRAGMA busy_timeout = 3000');
+            $db->exec('CREATE TABLE IF NOT EXISTS usage (key TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, reset_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0)');
+            // The day of a member's first counted message: their free month runs from it.
+            try { $db->exec('ALTER TABLE usage ADD COLUMN first_at INTEGER NOT NULL DEFAULT 0'); } catch (Exception $e) {}
+        } catch (Exception $e) {
+            error_log('member usage db: ' . $e->getMessage());
+            $db = null;
+        }
+        return $db;
+    }
+}
+
+/* ===========================================================================
+ * The free allowance: a month at ten a day, then three a day for good (#1383).
+ *
+ * The month runs from a member's first counted message on any surface. The
+ * three that remain keep the website what it is, a free place to ask about
+ * Harmonism while reading; the way to talk without a limit is to run Lodestone on
+ * one's own compute, or on a model rented under one's own key.
+ * =========================================================================== */
+if (!defined('MEMBERSHIP_TRIAL_DAYS')) define('MEMBERSHIP_TRIAL_DAYS', 30);
+if (!defined('MEMBERSHIP_TRIAL_CAP')) define('MEMBERSHIP_TRIAL_CAP', 10);
+if (!defined('MEMBERSHIP_FLOOR_CAP')) define('MEMBERSHIP_FLOOR_CAP', 3);
+
+if (!function_exists('membership_free_cap')) {
+    /** A free member's cap today: the trial's while their month lasts (or before it starts), the floor after. */
+    function membership_free_cap(?string $key): int {
+        $db = $key ? membership_usage_db() : null;
+        if (!$db) return MEMBERSHIP_TRIAL_CAP;
+        try {
+            $stmt = $db->prepare('SELECT first_at FROM usage WHERE key = ?');
+            $stmt->execute([$key]);
+            $first = (int)$stmt->fetchColumn();
+        } catch (Exception $e) { return MEMBERSHIP_TRIAL_CAP; }
+        if ($first === 0 || time() - $first < MEMBERSHIP_TRIAL_DAYS * 86400) return MEMBERSHIP_TRIAL_CAP;
+        return MEMBERSHIP_FLOOR_CAP;
+    }
+}
+
+if (!function_exists('membership_quota_key_email')) {
+    function membership_quota_key_email(?string $email): ?string {
+        $email = strtolower(trim((string)$email));
+        return ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) ? 'email:' . $email : null;
+    }
+}
+
+if (!function_exists('membership_quota_key_website')) {
+    function membership_quota_key_website(PDO $db, string $clientId): string {
+        try {
+            $stmt = $db->prepare('SELECT email FROM clients WHERE client_id = ?');
+            $stmt->execute([$clientId]);
+            $key = membership_quota_key_email($stmt->fetchColumn() ?: null);
+            if ($key) return $key;
+        } catch (PDOException $e) {}
+        return 'client:' . $clientId;
+    }
+}
+
+if (!function_exists('membership_quota_key_telegram')) {
+    function membership_quota_key_telegram(PDO $db, int $telegramId): string {
+        try {
+            $stmt = $db->prepare('SELECT member_email FROM linked_accounts WHERE telegram_id = ? AND verified = 1 LIMIT 1');
+            $stmt->execute([$telegramId]);
+            $key = membership_quota_key_email($stmt->fetchColumn() ?: null);
+            if ($key) return $key;
+        } catch (PDOException $e) {}
+        return 'tg:' . $telegramId;
+    }
+}
+
+if (!function_exists('membership_quota_read')) {
+    /** ['count' => int, 'reset_at' => int] for a key, with the window rolled over when it has elapsed; null without the store. */
+    function membership_quota_read(string $key): ?array {
+        $db = membership_usage_db();
+        if (!$db) return null;
+        try {
+            $now = time();
+            $stmt = $db->prepare('SELECT count, reset_at FROM usage WHERE key = ?');
+            $stmt->execute([$key]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $count = (int)($row['count'] ?? 0);
+            $resetAt = (int)($row['reset_at'] ?? 0);
+            if ($resetAt === 0 || $now >= $resetAt) {
+                $count = 0;
+                $resetAt = $now + 86400;
+                $db->prepare('INSERT INTO usage (key, count, reset_at, updated_at) VALUES (?, 0, ?, ?)
+                               ON CONFLICT(key) DO UPDATE SET count = 0, reset_at = excluded.reset_at, updated_at = excluded.updated_at')
+                   ->execute([$key, $resetAt, $now]);
+            }
+            return ['count' => $count, 'reset_at' => $resetAt];
+        } catch (Exception $e) {
+            error_log('member usage read: ' . $e->getMessage());
+            return null;
+        }
+    }
+}
+
+if (!function_exists('membership_quota_increment')) {
+    function membership_quota_increment(string $key): bool {
+        $db = membership_usage_db();
+        if (!$db) return false;
+        try {
+            $now = time();
+            $db->prepare('INSERT INTO usage (key, count, reset_at, updated_at, first_at) VALUES (?, 1, ?, ?, ?)
+                           ON CONFLICT(key) DO UPDATE SET count = count + 1, updated_at = excluded.updated_at,
+                           first_at = CASE WHEN first_at = 0 THEN excluded.first_at ELSE first_at END')
+               ->execute([$key, $now + 86400, $now, $now]);
+            return true;
+        } catch (Exception $e) {
+            error_log('member usage increment: ' . $e->getMessage());
+            return false;
         }
     }
 }
@@ -249,7 +391,7 @@ if (!function_exists('membership_check_rate_limit_website')) {
         // Paid + comp: truly unlimited (Decision #771). Short-circuit before
         // the counter logic — paying practitioners never see a cap. The
         // Harmonist framing ("the relationship deepens autonomy, not replaces
-        // it") is carried by MunAI's conversational behavior and the
+        // it") is carried by Lodestone's conversational behavior and the
         // self-liquidating guidance model, not by metering paying users.
         if ($tier['status'] === 'paid' || $tier['status'] === 'comp') {
             return [
@@ -262,8 +404,22 @@ if (!function_exists('membership_check_rate_limit_website')) {
             ];
         }
 
-        $cap = membership_daily_cap($tier['status']);
+        $qkey = membership_quota_key_website($db, $clientId);
+        $cap = $tier['status'] === 'free' ? membership_free_cap($qkey) : membership_daily_cap($tier['status']);
         $now = time();
+
+        // One allowance per member across surfaces (#1349).
+        $shared = membership_quota_read($qkey);
+        if ($shared !== null) {
+            return [
+                'allowed'   => $shared['count'] < $cap,
+                'remaining' => max(0, $cap - $shared['count']),
+                'cap'       => $cap,
+                'reset_at'  => $shared['reset_at'],
+                'status'    => $tier['status'],
+                'plan'      => $tier['plan'],
+            ];
+        }
 
         $stmt = $db->prepare('SELECT messages_24h_count, messages_24h_reset_at FROM clients WHERE client_id = ?');
         $stmt->execute([$clientId]);
@@ -300,6 +456,7 @@ if (!function_exists('membership_increment_website')) {
      * the Claude response is delivered.
      */
     function membership_increment_website(PDO $db, string $clientId): void {
+        membership_quota_increment(membership_quota_key_website($db, $clientId));
         try {
             $db->prepare('
                 UPDATE clients SET messages_24h_count = messages_24h_count + 1
@@ -330,8 +487,21 @@ if (!function_exists('membership_check_rate_limit_telegram')) {
             ];
         }
 
-        $cap = membership_daily_cap($tier['status']);
+        $qkey = membership_quota_key_telegram($db, $telegramId);
+        $cap = $tier['status'] === 'free' ? membership_free_cap($qkey) : membership_daily_cap($tier['status']);
         $now = time();
+
+        $shared = membership_quota_read($qkey);
+        if ($shared !== null) {
+            return [
+                'allowed'   => $shared['count'] < $cap,
+                'remaining' => max(0, $cap - $shared['count']),
+                'cap'       => $cap,
+                'reset_at'  => $shared['reset_at'],
+                'status'    => $tier['status'],
+                'plan'      => $tier['plan'],
+            ];
+        }
 
         $stmt = $db->prepare('SELECT messages_24h_count, messages_24h_reset_at FROM users WHERE telegram_id = ?');
         $stmt->execute([$telegramId]);
@@ -363,12 +533,47 @@ if (!function_exists('membership_check_rate_limit_telegram')) {
 
 if (!function_exists('membership_increment_telegram')) {
     function membership_increment_telegram(PDO $db, int $telegramId): void {
+        membership_quota_increment(membership_quota_key_telegram($db, $telegramId));
         try {
             $db->prepare('
                 UPDATE users SET messages_24h_count = messages_24h_count + 1
                 WHERE telegram_id = ?
             ')->execute([$telegramId]);
         } catch (PDOException $e) {}
+    }
+}
+
+if (!function_exists('membership_check_rate_limit_email')) {
+    /**
+     * For a surface that knows the member only by verified email (Lodestone
+     * desktop's hosted mode). Tier: the comp allowlist, then the website row
+     * stamped with that email with the highest standing; free otherwise.
+     */
+    function membership_check_rate_limit_email(?PDO $websiteDb, string $email): array {
+        $email = strtolower(trim($email));
+        $status = 'free'; $plan = '';
+        if (membership_email_is_comp_allowlisted($email)) { $status = 'comp'; $plan = 'allowlist'; }
+        elseif ($websiteDb) {
+            try {
+                $stmt = $websiteDb->prepare('SELECT client_id FROM clients WHERE lower(email) = ? ORDER BY message_count DESC');
+                $stmt->execute([$email]);
+                foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $cid) {
+                    $t = membership_resolve_tier_website($websiteDb, (string)$cid);
+                    if ($t['status'] === 'paid' || $t['status'] === 'comp') { $status = $t['status']; $plan = $t['plan']; break; }
+                }
+            } catch (PDOException $e) {}
+        }
+        if ($status === 'paid' || $status === 'comp') {
+            return ['allowed' => true, 'remaining' => -1, 'cap' => 0, 'reset_at' => 0, 'status' => $status, 'plan' => $plan, 'key' => membership_quota_key_email($email)];
+        }
+        $key = membership_quota_key_email($email);
+        $cap = $status === 'free' ? membership_free_cap($key) : membership_daily_cap($status);
+        $shared = $key ? membership_quota_read($key) : null;
+        if ($shared === null) {
+            // No store, no count: refuse rather than give unmetered access.
+            return ['allowed' => false, 'remaining' => 0, 'cap' => $cap, 'reset_at' => time() + 3600, 'status' => $status, 'plan' => $plan, 'key' => $key, 'unavailable' => true];
+        }
+        return ['allowed' => $shared['count'] < $cap, 'remaining' => max(0, $cap - $shared['count']), 'cap' => $cap, 'reset_at' => $shared['reset_at'], 'status' => $status, 'plan' => $plan, 'key' => $key];
     }
 }
 
@@ -379,7 +584,7 @@ if (!function_exists('membership_cap_hit_message')) {
      *
      * Hours-until-reset is derived from reset_at; the message tells the
      * practitioner when they can resume. For the free tier the message points
-     * to running MunAI on one's own substrate (the paid tier was retired on
+     * to running Lodestone on one's own substrate (the paid tier was retired on
      * October 8, 2026). For comp, no CTA — the cap is structural.
      */
     function membership_cap_hit_message(string $status, int $resetAt, string $lang = 'en'): string {
@@ -387,18 +592,18 @@ if (!function_exists('membership_cap_hit_message')) {
 
         if ($status === 'free') {
             // The paid tier was retired on October 8, 2026. The way past the
-            // daily cap is now to run MunAI on one's own substrate.
+            // daily cap is now to run Lodestone on one's own substrate.
             $messages = [
-                'en' => "You've reached today's ten messages; the counter resets in {$hoursUntil}h. To talk without a limit, run MunAI yourself. MunAI Desktop runs it on your own computer, with an open model or one you rent under your own key, and keeps your memory there. Or load the free Sovereignty Bundle into an AI you already use.\n\nhttps://harmonism.io/munai-desktop",
-                'fr' => "Vous avez atteint les dix messages du jour ; le compteur repart dans {$hoursUntil}h. Pour converser sans limite, faites tourner MunAI vous-même. MunAI Desktop le fait vivre sur votre propre ordinateur, avec un modèle ouvert ou un modèle que vous louez avec votre propre clé, et y garde votre mémoire. Ou chargez le Sovereignty Bundle, gratuit, dans une IA que vous utilisez déjà.\n\nhttps://harmonism.io/munai-desktop",
-                'es' => "Has llegado a los diez mensajes de hoy; el contador se reinicia en {$hoursUntil}h. Para conversar sin límite, ejecuta MunAI tú mismo. MunAI Desktop lo hace funcionar en tu propio ordenador, con un modelo abierto o uno que alquilas con tu propia clave, y guarda allí tu memoria. O carga el Sovereignty Bundle, gratuito, en una IA que ya uses.\n\nhttps://harmonism.io/munai-desktop",
-                'ar' => "لقد بلغت رسائل اليوم العشر؛ يُعاد ضبط العدّاد خلال {$hoursUntil} ساعة. للحديث دون حدّ، شغّل MunAI بنفسك. يشغّله MunAI Desktop على حاسوبك الخاص، بنموذج مفتوح أو بنموذج تستأجره بمفتاحك الخاص، ويحفظ ذاكرتك هناك. أو حمّل حزمة السيادة (Sovereignty Bundle) المجانية في ذكاء اصطناعي تستخدمه بالفعل.\n\nhttps://harmonism.io/munai-desktop",
-                'pt' => "Você chegou às dez mensagens de hoje; o contador reinicia em {$hoursUntil}h. Para conversar sem limite, execute o MunAI você mesmo. O MunAI Desktop o faz funcionar no seu próprio computador, com um modelo aberto ou um que você aluga com a sua própria chave, e guarda ali a sua memória. Ou carregue o Sovereignty Bundle, gratuito, numa IA que você já usa.\n\nhttps://harmonism.io/munai-desktop",
-                'de' => "Du hast die zehn Nachrichten für heute erreicht; der Zähler setzt sich in {$hoursUntil}h zurück. Ohne Grenze sprichst du mit MunAI, wenn du es selbst betreibst. MunAI Desktop läuft auf deinem eigenen Computer, mit einem offenen Modell oder einem, das du mit deinem eigenen Schlüssel mietest, und bewahrt dort dein Gedächtnis. Oder lade das kostenlose Sovereignty Bundle in eine KI, die du schon nutzt.\n\nhttps://harmonism.io/munai-desktop",
-                'zh' => "您已用完今天的十条消息；计数将在 {$hoursUntil} 小时后重置。若要不受限制地交谈，请自己运行 MunAI。MunAI Desktop 在您自己的电脑上运行它，可使用开放模型，或用您自己的密钥租用的模型，并把您的记忆保存在那里。也可以把免费的 Sovereignty Bundle 加载到您已在使用的 AI 中。\n\nhttps://harmonism.io/munai-desktop",
-                'ja' => "本日の10メッセージに達しました。カウンターは{$hoursUntil}時間後にリセットされます。制限なしで話すには、MunAIをご自身で動かしてください。MunAI Desktopはあなた自身のコンピューターで動き、オープンなモデルか、ご自身のキーで借りるモデルを使い、記憶をそこに保ちます。または無料のSovereignty Bundleを、すでにお使いのAIに読み込ませてください。\n\nhttps://harmonism.io/munai-desktop",
-                'hi' => "आज के दस संदेश पूरे हो गए; गिनती {$hoursUntil} घंटे में फिर से शुरू होगी। बिना सीमा के बात करने के लिए MunAI को स्वयं चलाइए। MunAI Desktop उसे आपके अपने कंप्यूटर पर चलाता है, किसी खुले मॉडल से या आपकी अपनी कुंजी से किराए पर लिए मॉडल से, और आपकी स्मृति वहीं रखता है। या मुफ़्त Sovereignty Bundle को उस AI में लोड कीजिए जिसका आप पहले से उपयोग करते हैं।\n\nhttps://harmonism.io/munai-desktop",
-                'ru' => "Вы использовали десять сообщений на сегодня; счётчик обнулится через {$hoursUntil} ч. Чтобы говорить без ограничений, запустите MunAI сами. MunAI Desktop работает на вашем собственном компьютере, с открытой моделью или с моделью, которую вы арендуете по своему ключу, и хранит там вашу память. Или загрузите бесплатный Sovereignty Bundle в ИИ, которым вы уже пользуетесь.\n\nhttps://harmonism.io/munai-desktop",
+                'en' => "You've used today's free messages; the counter resets in {$hoursUntil}h. To talk without a limit, run Lodestone yourself. Lodestone Desktop runs it on your own computer, with an open model or one you rent under your own key, and keeps your memory there. Or load the free Sovereignty Bundle into an AI you already use.\n\nhttps://harmonism.io/lodestone-desktop",
+                'fr' => "Vous avez utilisé les messages gratuits du jour ; le compteur repart dans {$hoursUntil}h. Pour converser sans limite, faites tourner Lodestone vous-même. Lodestone Desktop le fait vivre sur votre propre ordinateur, avec un modèle ouvert ou un modèle que vous louez avec votre propre clé, et y garde votre mémoire. Ou chargez le Sovereignty Bundle, gratuit, dans une IA que vous utilisez déjà.\n\nhttps://harmonism.io/lodestone-desktop",
+                'es' => "Has usado los mensajes gratuitos de hoy; el contador se reinicia en {$hoursUntil}h. Para conversar sin límite, ejecuta Lodestone tú mismo. Lodestone Desktop lo hace funcionar en tu propio ordenador, con un modelo abierto o uno que alquilas con tu propia clave, y guarda allí tu memoria. O carga el Sovereignty Bundle, gratuito, en una IA que ya uses.\n\nhttps://harmonism.io/lodestone-desktop",
+                'ar' => "لقد استخدمت رسائل اليوم المجانية؛ يُعاد ضبط العدّاد خلال {$hoursUntil} ساعة. للحديث دون حدّ، شغّل Lodestone بنفسك. يشغّله Lodestone Desktop على حاسوبك الخاص، بنموذج مفتوح أو بنموذج تستأجره بمفتاحك الخاص، ويحفظ ذاكرتك هناك. أو حمّل حزمة السيادة (Sovereignty Bundle) المجانية في ذكاء اصطناعي تستخدمه بالفعل.\n\nhttps://harmonism.io/lodestone-desktop",
+                'pt' => "Você usou as mensagens gratuitas de hoje; o contador reinicia em {$hoursUntil}h. Para conversar sem limite, execute o Lodestone você mesmo. O Lodestone Desktop o faz funcionar no seu próprio computador, com um modelo aberto ou um que você aluga com a sua própria chave, e guarda ali a sua memória. Ou carregue o Sovereignty Bundle, gratuito, numa IA que você já usa.\n\nhttps://harmonism.io/lodestone-desktop",
+                'de' => "Du hast die kostenlosen Nachrichten für heute aufgebraucht; der Zähler setzt sich in {$hoursUntil}h zurück. Ohne Grenze sprichst du mit Lodestone, wenn du es selbst betreibst. Lodestone Desktop läuft auf deinem eigenen Computer, mit einem offenen Modell oder einem, das du mit deinem eigenen Schlüssel mietest, und bewahrt dort dein Gedächtnis. Oder lade das kostenlose Sovereignty Bundle in eine KI, die du schon nutzt.\n\nhttps://harmonism.io/lodestone-desktop",
+                'zh' => "您已用完今天的免费消息；计数将在 {$hoursUntil} 小时后重置。若要不受限制地交谈，请自己运行 Lodestone。Lodestone Desktop 在您自己的电脑上运行它，可使用开放模型，或用您自己的密钥租用的模型，并把您的记忆保存在那里。也可以把免费的 Sovereignty Bundle 加载到您已在使用的 AI 中。\n\nhttps://harmonism.io/lodestone-desktop",
+                'ja' => "本日の無料メッセージを使い切りました。カウンターは{$hoursUntil}時間後にリセットされます。制限なしで話すには、Lodestoneをご自身で動かしてください。Lodestone Desktopはあなた自身のコンピューターで動き、オープンなモデルか、ご自身のキーで借りるモデルを使い、記憶をそこに保ちます。または無料のSovereignty Bundleを、すでにお使いのAIに読み込ませてください。\n\nhttps://harmonism.io/lodestone-desktop",
+                'hi' => "आज के मुफ़्त संदेश पूरे हो गए; गिनती {$hoursUntil} घंटे में फिर से शुरू होगी। बिना सीमा के बात करने के लिए Lodestone को स्वयं चलाइए। Lodestone Desktop उसे आपके अपने कंप्यूटर पर चलाता है, किसी खुले मॉडल से या आपकी अपनी कुंजी से किराए पर लिए मॉडल से, और आपकी स्मृति वहीं रखता है। या मुफ़्त Sovereignty Bundle को उस AI में लोड कीजिए जिसका आप पहले से उपयोग करते हैं।\n\nhttps://harmonism.io/lodestone-desktop",
+                'ru' => "Вы использовали бесплатные сообщения на сегодня; счётчик обнулится через {$hoursUntil} ч. Чтобы говорить без ограничений, запустите Lodestone сами. Lodestone Desktop работает на вашем собственном компьютере, с открытой моделью или с моделью, которую вы арендуете по своему ключу, и хранит там вашу память. Или загрузите бесплатный Sovereignty Bundle в ИИ, которым вы уже пользуетесь.\n\nhttps://harmonism.io/lodestone-desktop",
             ];
         } else {
             // Paid + comp: structural-reminder register, no upgrade CTA.
@@ -424,8 +629,8 @@ if (!function_exists('membership_cap_hit_message')) {
  * Soft-Governor — Self-Liquidating Usage Pattern (Decision following May 10, 2026)
  *
  * Paid + comp practitioners are truly unlimited. The Harmonist response to
- * heavy use is not a hard cap but a shape-shift in MunAI's posture: as daily
- * frequency rises, MunAI's responses move toward natural closure rather than
+ * heavy use is not a hard cap but a shape-shift in Lodestone's posture: as daily
+ * frequency rises, Lodestone's responses move toward natural closure rather than
  * elaboration, and at higher density add an explicit hand-off back to the
  * practitioner's own ground. The relationship deepens autonomy; it does not
  * substitute for the practitioner's own work.
@@ -524,7 +729,7 @@ if (!function_exists('companion_usage_pattern_block')) {
      * Build the <usage_pattern> system-prompt block given the rolling 24h
      * message count. Returns empty string for level 0 (no injection).
      *
-     * Both blocks include the count value so MunAI can calibrate intensity
+     * Both blocks include the count value so Lodestone can calibrate intensity
      * inside the band (12 vs 18 in band 1; 22 vs 35 in band 2). The prose
      * is intentionally specific about what to suppress (band 1) and what
      * registers to vary (band 2) — Opus reaches for elaboration invitations
@@ -537,7 +742,7 @@ if (!function_exists('companion_usage_pattern_block')) {
         if ($count24h < 20) {
             return "<usage_pattern level=\"frequent\">\n"
                 . "The practitioner has engaged you {$count24h} times in the last 24 hours. "
-                . "MunAI responses carry substantive density and the path is walked through "
+                . "Lodestone responses carry substantive density and the path is walked through "
                 . "integration, not through continuous exchange. Respond fully to the present "
                 . "message, then let the response end where it would naturally end. Do not "
                 . "offer to elaborate. Do not invite further questions. Do not extend with "

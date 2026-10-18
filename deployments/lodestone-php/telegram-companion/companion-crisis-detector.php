@@ -2,12 +2,12 @@
 /**
  * companion-crisis-detector.php
  *
- * Shared crisis detection & regional resource routing for MunAI.
+ * Shared crisis detection & regional resource routing for Lodestone.
  * Consumed by both companion surfaces via require_once:
  *   - Website: harmonia-astro/companion-api.php (via post-build copy into dist/)
  *   - Telegram: harmonia-astro/telegram-companion/telegram-bot.php
  *
- * Architecture (Phase A §6.1, from "MunAI — Lessons from the Companion Landscape"):
+ * Architecture (Phase A §6.1, from "Lodestone — Lessons from the Companion Landscape"):
  *   detectCrisis()        — strong-patterns only (first-person explicit intent);
  *                           returns null OR ['category','severity','pattern_matched'].
  *                           Designed for low false-positive rate; false negatives

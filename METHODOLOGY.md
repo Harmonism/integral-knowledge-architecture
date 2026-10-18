@@ -148,7 +148,7 @@ Every wisdom tradition faces a transmission bottleneck. The knowledge exists —
 
 ### The Solution Pattern: The AI Companion as Architectural Guide
 
-The AI companion resolves the transmission bottleneck by combining the scalability of text with the personalisation of the teacher — structured not by a generic pedagogical model but by the knowledge system's own architecture. In [[Harmonism]], [[MunAI]] is not a chatbot that answers questions about the Wheel. It is an intelligence that *navigates the Wheel with the practitioner*: it knows where they are (through the Wheel-structured profile), it knows where the architecture suggests they go next (through the Way of Harmony sequence and the content priority tiers), and it knows what the system holds as doctrine versus what remains open (through the epistemic metadata and doctrinal backbone).
+The AI companion resolves the transmission bottleneck by combining the scalability of text with the personalisation of the teacher — structured not by a generic pedagogical model but by the knowledge system's own architecture. In [[Harmonism]], [[Lodestone]] is not a chatbot that answers questions about the Wheel. It is an intelligence that *navigates the Wheel with the practitioner*: it knows where they are (through the Wheel-structured profile), it knows where the architecture suggests they go next (through the Way of Harmony sequence and the content priority tiers), and it knows what the system holds as doctrine versus what remains open (through the epistemic metadata and doctrinal backbone).
 
 This is categorically different from an AI tutor or a knowledge-base chatbot. An AI tutor teaches content; the AI companion guides a *journey through an architecture*. The distinction matters because integral knowledge is not a body of information to be absorbed sequentially — it is a living structure to be inhabited, and the order in which someone encounters its parts determines whether the whole becomes legible. A person who encounters Harmonism through a Health protocol and then discovers the Presence dimension behind it has a fundamentally different relationship to the system than someone who reads the metaphysics first and tries to apply it afterward. The AI companion knows this because the sequencing logic is encoded in its architecture — the content priority tiers, the Way of Harmony spiral, the alchemical sequence of preparing the vessel before filling it with light.
 
@@ -386,4 +386,4 @@ The folder-based inbox model that accumulates faster than it gets integrated. Th
 
 ---
 
-*See also: [[Harmonism]], [[Anatomy of the Wheel]], [[MunAI]], [[Glossary of Terms]]*
+*See also: [[Harmonism]], [[Anatomy of the Wheel]], [[Lodestone]], [[Glossary of Terms]]*

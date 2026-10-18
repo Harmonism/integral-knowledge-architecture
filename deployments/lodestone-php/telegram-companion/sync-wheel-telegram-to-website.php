@@ -31,6 +31,8 @@
  */
 
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit("CLI only\n"); }
+// Decision #1372: the website keeps no memory to mirror into.
+exit("Retired by Decision #1372: website memory is held by the practitioner.\n");
 
 // ===== ARGS =====
 $mode     = 'dry-run';

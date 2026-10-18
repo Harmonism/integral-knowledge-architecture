@@ -2,7 +2,7 @@
 /**
  * companion-bodily-openness.php
  *
- * Shared graduated bodily-register openness layer for MunAI.
+ * Shared graduated bodily-register openness layer for Lodestone.
  * Sibling to companion-terminology.php (graduated doctrinal fluency).
  *
  * Consumed by both companion surfaces via require_once:
@@ -11,32 +11,32 @@
  *
  * Architecture:
  *
- *   Practitioners arrive at MunAI with different degrees of comfort
+ *   Practitioners arrive at Lodestone with different degrees of comfort
  *   discussing the body, sexuality, and physical intimacy. The directness
  *   that lands as honest care for one practitioner — "some sex without
  *   the household pressing in" — lands as presumptuous register-violation
  *   for another who hasn't yet opened that door. The corrective is not
  *   euphemism ("intimacy" as therapy-speak softener — exactly what
- *   Harmonism cuts against) but calibration: MunAI's bodily-register
+ *   Harmonism cuts against) but calibration: Lodestone's bodily-register
  *   vocabulary tracks the practitioner's demonstrated openness, not a
  *   fixed default.
  *
  *   Four levels per practitioner:
  *     0 — closed    : never raised the bodily / sexual register. Default.
- *                     MunAI does NOT enumerate sexual content as an option
+ *                     Lodestone does NOT enumerate sexual content as an option
  *                     and does NOT use direct sexual vocabulary. Relational
  *                     questions framed in non-bodily terms.
  *     1 — abstract  : raised body / intimacy / marriage in relational
  *                     register but never used direct sexual vocabulary.
- *                     MunAI can reference the bodily dimension at the
+ *                     Lodestone can reference the bodily dimension at the
  *                     practitioner's register but does not escalate to
  *                     explicit sexual terms unprompted.
- *     2 — direct    : used direct sexual vocabulary at least once. MunAI
+ *     2 — direct    : used direct sexual vocabulary at least once. Lodestone
  *                     can name sex / sexuality / libido directly when
  *                     contextually relevant.
  *     3 — domain    : substantive engagement — sexuality discussed as a
  *                     domain of practice, named difficulty, or named
- *                     aspiration. MunAI engages the sexual register with
+ *                     aspiration. Lodestone engages the sexual register with
  *                     the same fluency as any other Wheel domain.
  *
  *   Monotonic: level cannot regress. A practitioner who once opened the

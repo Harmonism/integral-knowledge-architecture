@@ -26,7 +26,7 @@ SAMPLE_GLOSSARY_DATA = {
         },
         {
             "term": "Companion",
-            "definition": "Deprecated MunAI display name.",
+            "definition": "Deprecated Lodestone display name.",
             "deprecated": True,
         },
     ],

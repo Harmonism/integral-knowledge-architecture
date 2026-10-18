@@ -1,8 +1,8 @@
 <?php
 /**
- * companion-voice.php — MunAI's spoken register on Telegram.
+ * companion-voice.php — Lodestone's spoken register on Telegram.
  *
- * Renders a MunAI reply that has ALREADY been delivered as text into audio and
+ * Renders a Lodestone reply that has ALREADY been delivered as text into audio and
  * sends it after the text, as a Telegram voice message. The text is never
  * replaced, never delayed, and never conditional on anything in this file
  * succeeding: one answer per inbound message is the reliability contract
@@ -21,14 +21,14 @@
  * required on the server. The audio is held in memory and posted as multipart;
  * it is never written to disk, inside public_html or out of it.
  *
- * Where MunAI does NOT speak, by design:
+ * Where Lodestone does NOT speak, by design:
  *   - Crisis replies. Those never reach the worker — telegram-bot.php answers
  *     them deterministically and inline, and the hotline numbers must stay
  *     readable, tappable and re-readable rather than spoken once (#1179, #535).
  *   - Witness mode. In acute activation the practitioner needs to be witnessed,
  *     not performed at. A synthetic voice reading fresh grief back simulates
- *     exactly the presence Decision #1139 says MunAI must never offer itself as.
- *   - Replies longer than MUNAI_VOICE_MAX_CHARS. Cutting MunAI off mid-thought
+ *     exactly the presence Decision #1139 says Lodestone must never offer itself as.
+ *   - Replies longer than MUNAI_VOICE_MAX_CHARS. Cutting Lodestone off mid-thought
  *     is worse than staying silent, and the length governor (#1145) puts its
  *     best work — the refusals, which run 100–400 characters — well inside the
  *     cap anyway.
@@ -54,7 +54,7 @@ if (!defined('MUNAI_VOICE_ENDPOINT'))  define('MUNAI_VOICE_ENDPOINT', 'https://a
 if (!defined('MUNAI_VOICE_TG_API'))    define('MUNAI_VOICE_TG_API', 'https://api.telegram.org/bot');
 
 // Above this, the reply is left as text only. 1200 characters is roughly 80
-// seconds of speech and sits well above MunAI's best register (#1145).
+// seconds of speech and sits well above Lodestone's best register (#1145).
 if (!defined('MUNAI_VOICE_MAX_CHARS')) define('MUNAI_VOICE_MAX_CHARS', 1200);
 
 // Per-practitioner rolling 24h ceiling on synthesised characters. At $15 per
@@ -83,12 +83,12 @@ if (!defined('MUNAI_VOICE_MODES'))     define('MUNAI_VOICE_MODES', 'off,mirror,a
  * aspirated H. Add Harmonist-terminology entries as listening tests confirm
  * them; do not guess respellings that have not been heard.
  */
-if (!function_exists('munaiVoicePronunciation')) {
-    function munaiVoicePronunciation(string $text, string $lang): string {
+if (!function_exists('lodestoneVoicePronunciation')) {
+    function lodestoneVoicePronunciation(string $text, string $lang): string {
         $map = [
             'fr' => [
                 // Both cases: the article pipeline only ever meets this at the
-                // head of a sentence, MunAI meets it mid-sentence far more often.
+                // head of a sentence, Lodestone meets it mid-sentence far more often.
                 "L'Harmonisme" => "L'harmonisme",
                 "l'Harmonisme" => "l'harmonisme",
                 "L'Harmoniste" => "L'harmoniste",
@@ -104,15 +104,15 @@ if (!function_exists('munaiVoicePronunciation')) {
 
 
 /**
- * Reduce a MunAI reply to speakable prose.
+ * Reduce a Lodestone reply to speakable prose.
  *
  * Markdown emphasis, wikilinks, headers and bullets are structure for the eye.
  * URLs are the sharpest case: a spoken harmonism.io path is noise, and the
  * clickable link is already in the text message immediately above, so bare URLs
  * are removed rather than read out.
  */
-if (!function_exists('munaiVoiceCleanForSpeech')) {
-    function munaiVoiceCleanForSpeech(string $text, string $lang = 'en'): string {
+if (!function_exists('lodestoneVoiceCleanForSpeech')) {
+    function lodestoneVoiceCleanForSpeech(string $text, string $lang = 'en'): string {
         $t = $text;
 
         // Fenced and inline code — structure, not speech.
@@ -160,7 +160,7 @@ if (!function_exists('munaiVoiceCleanForSpeech')) {
         $t = preg_replace('/\n{3,}/u', "\n\n", $t);
         $t = trim($t);
 
-        return munaiVoicePronunciation($t, $lang);
+        return lodestoneVoicePronunciation($t, $lang);
     }
 }
 
@@ -171,8 +171,8 @@ if (!function_exists('munaiVoiceCleanForSpeech')) {
  * @param array $ctx mode, inbound_voice, witness, has_key, chars_used_24h
  * @return array ['send' => bool, 'reason' => string, 'speech' => string]
  */
-if (!function_exists('munaiVoiceDecide')) {
-    function munaiVoiceDecide(string $responseText, array $ctx): array {
+if (!function_exists('lodestoneVoiceDecide')) {
+    function lodestoneVoiceDecide(string $responseText, array $ctx): array {
         $no = fn(string $why) => ['send' => false, 'reason' => $why, 'speech' => ''];
 
         $mode = (string) ($ctx['mode'] ?? 'off');
@@ -183,7 +183,7 @@ if (!function_exists('munaiVoiceDecide')) {
         if ($mode === 'mirror' && empty($ctx['inbound_voice']))      return $no('mode_mirror_text_inbound');
         if (!empty($ctx['witness']))                                 return $no('witness_mode');
 
-        $speech = munaiVoiceCleanForSpeech($responseText, (string) ($ctx['lang'] ?? 'en'));
+        $speech = lodestoneVoiceCleanForSpeech($responseText, (string) ($ctx['lang'] ?? 'en'));
         $len = mb_strlen($speech);
         if ($len === 0)                                              return $no('empty_after_cleaning');
         if ($len > MUNAI_VOICE_MAX_CHARS)                            return $no("too_long:{$len}");
@@ -199,10 +199,10 @@ if (!function_exists('munaiVoiceDecide')) {
 /**
  * Synthesise speech. Returns raw MP3 bytes, or null on any failure.
  */
-if (!function_exists('munaiVoiceSynthesize')) {
-    function munaiVoiceSynthesize(string $speech, string $lang, string $apiKey, string $voiceId = MUNAI_VOICE_ID): ?string {
+if (!function_exists('lodestoneVoiceSynthesize')) {
+    function lodestoneVoiceSynthesize(string $speech, string $lang, string $apiKey, string $voiceId = MUNAI_VOICE_ID): ?string {
         $lang = in_array($lang, explode(',', MUNAI_VOICE_LANGS), true) ? $lang : 'en';
-        $voiceId = munaiVoiceResolveId($voiceId);
+        $voiceId = lodestoneVoiceResolveId($voiceId);
 
         $payload = json_encode([
             'text'     => $speech,
@@ -234,16 +234,16 @@ if (!function_exists('munaiVoiceSynthesize')) {
         curl_close($ch);
 
         if ($curlErr !== '') {
-            error_log("[munai-voice] TTS curl error: {$curlErr}");
+            error_log("[lodestone-voice] TTS curl error: {$curlErr}");
             return null;
         }
         if ($httpCode !== 200 || !is_string($result) || $result === '') {
-            error_log("[munai-voice] TTS HTTP {$httpCode}: " . mb_substr((string) $result, 0, 300));
+            error_log("[lodestone-voice] TTS HTTP {$httpCode}: " . mb_substr((string) $result, 0, 300));
             return null;
         }
         // A JSON body where audio was expected is an error envelope.
         if (str_starts_with(ltrim($result), '{')) {
-            error_log('[munai-voice] TTS returned JSON, not audio: ' . mb_substr($result, 0, 300));
+            error_log('[lodestone-voice] TTS returned JSON, not audio: ' . mb_substr($result, 0, 300));
             return null;
         }
         return $result;
@@ -256,8 +256,8 @@ if (!function_exists('munaiVoiceSynthesize')) {
  * practitioner sets; anything unrecognised falls back to the default rather
  * than asking the API to speak in a voice that does not exist.
  */
-if (!function_exists('munaiVoiceResolveId')) {
-    function munaiVoiceResolveId(string $pref): string {
+if (!function_exists('lodestoneVoiceResolveId')) {
+    function lodestoneVoiceResolveId(string $pref): string {
         return match (strtolower(trim($pref))) {
             'male'   => MUNAI_VOICE_ID_MALE,
             'female' => MUNAI_VOICE_ID_FEMALE,
@@ -273,22 +273,22 @@ if (!function_exists('munaiVoiceResolveId')) {
  * Falls back to sendAudio if sendVoice rejects the file: a playable track is
  * still the spoken reply, just in a different bubble.
  */
-if (!function_exists('munaiVoiceDeliver')) {
-    function munaiVoiceDeliver(int $chatId, string $mp3, string $method = 'sendVoice'): bool {
+if (!function_exists('lodestoneVoiceDeliver')) {
+    function lodestoneVoiceDeliver(int $chatId, string $mp3, string $method = 'sendVoice'): bool {
         $field    = ($method === 'sendVoice') ? 'voice' : 'audio';
-        $boundary = uniqid('munaivoice', true);
+        $boundary = uniqid('lodestonevoice', true);
 
         $body = "--{$boundary}\r\n"
               . "Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n"
               . "{$chatId}\r\n"
               . "--{$boundary}\r\n"
-              . "Content-Disposition: form-data; name=\"{$field}\"; filename=\"munai.mp3\"\r\n"
+              . "Content-Disposition: form-data; name=\"{$field}\"; filename=\"lodestone.mp3\"\r\n"
               . "Content-Type: audio/mpeg\r\n\r\n"
               . $mp3 . "\r\n";
         if ($method === 'sendAudio') {
             $body .= "--{$boundary}\r\n"
                    . "Content-Disposition: form-data; name=\"title\"\r\n\r\n"
-                   . "MunAI\r\n";
+                   . "Lodestone\r\n";
         }
         $body .= "--{$boundary}--\r\n";
 
@@ -308,7 +308,7 @@ if (!function_exists('munaiVoiceDeliver')) {
         curl_close($ch);
 
         if ($curlErr !== '') {
-            error_log("[munai-voice] {$method} curl error: {$curlErr}");
+            error_log("[lodestone-voice] {$method} curl error: {$curlErr}");
             return false;
         }
         $data = json_decode((string) $result, true);
@@ -316,10 +316,10 @@ if (!function_exists('munaiVoiceDeliver')) {
             return true;
         }
 
-        error_log("[munai-voice] {$method} HTTP {$httpCode}: " . mb_substr((string) $result, 0, 300));
+        error_log("[lodestone-voice] {$method} HTTP {$httpCode}: " . mb_substr((string) $result, 0, 300));
         if ($method === 'sendVoice') {
-            error_log('[munai-voice] retrying as sendAudio');
-            return munaiVoiceDeliver($chatId, $mp3, 'sendAudio');
+            error_log('[lodestone-voice] retrying as sendAudio');
+            return lodestoneVoiceDeliver($chatId, $mp3, 'sendAudio');
         }
         return false;
     }
@@ -331,11 +331,11 @@ if (!function_exists('munaiVoiceDeliver')) {
  *
  * @return array ['sent'=>bool,'reason'=>string,'chars'=>int,'cost_usd'=>float]
  */
-if (!function_exists('munaiVoiceSendReply')) {
-    function munaiVoiceSendReply(int $chatId, string $responseText, array $ctx): array {
+if (!function_exists('lodestoneVoiceSendReply')) {
+    function lodestoneVoiceSendReply(int $chatId, string $responseText, array $ctx): array {
         $out = ['sent' => false, 'reason' => 'unknown', 'chars' => 0, 'cost_usd' => 0.0];
         try {
-            $decision = munaiVoiceDecide($responseText, $ctx);
+            $decision = lodestoneVoiceDecide($responseText, $ctx);
             $out['reason'] = $decision['reason'];
             if (!$decision['send']) {
                 return $out;
@@ -349,29 +349,29 @@ if (!function_exists('munaiVoiceSendReply')) {
             }
 
             $t0  = microtime(true);
-            $mp3 = munaiVoiceSynthesize($speech, (string) ($ctx['lang'] ?? 'en'), (string) $ctx['api_key'], (string) ($ctx['voice'] ?? 'female'));
+            $mp3 = lodestoneVoiceSynthesize($speech, (string) ($ctx['lang'] ?? 'en'), (string) $ctx['api_key'], (string) ($ctx['voice'] ?? 'female'));
             if ($mp3 === null) {
                 $out['reason'] = 'tts_failed';
                 return $out;
             }
             $synthSec = round(microtime(true) - $t0, 1);
 
-            $sent = munaiVoiceDeliver($chatId, $mp3);
+            $sent = lodestoneVoiceDeliver($chatId, $mp3);
             $out['sent']     = $sent;
             $out['reason']   = $sent ? 'ok' : 'telegram_failed';
             $out['chars']    = $chars;
             $out['cost_usd'] = round($chars * MUNAI_VOICE_USD_PER_CHAR, 6);
 
             error_log(sprintf(
-                '[munai-voice] chat=%d %s voice=%s chars=%d bytes=%d synth=%ss cost=$%s',
-                $chatId, $sent ? 'sent' : 'FAILED', munaiVoiceResolveId((string) ($ctx['voice'] ?? 'female')),
+                '[lodestone-voice] chat=%d %s voice=%s chars=%d bytes=%d synth=%ss cost=$%s',
+                $chatId, $sent ? 'sent' : 'FAILED', lodestoneVoiceResolveId((string) ($ctx['voice'] ?? 'female')),
                 $chars, strlen($mp3), $synthSec, $out['cost_usd']
             ));
             return $out;
         } catch (\Throwable $e) {
             // The text answer is already delivered; a voice failure must never
             // surface to the practitioner or interrupt the worker.
-            error_log('[munai-voice] exception: ' . $e->getMessage());
+            error_log('[lodestone-voice] exception: ' . $e->getMessage());
             $out['reason'] = 'exception';
             return $out;
         }

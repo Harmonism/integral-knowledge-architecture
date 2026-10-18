@@ -58,7 +58,7 @@ for folder in "Philosophy" "Wheel of Harmony" "World"; do
     fi
 done
 
-# Copy vault-root publishable articles (Harmonism.md, MunAI.md, etc.)
+# Copy vault-root publishable articles (Harmonism.md, Lodestone.md, etc.)
 shopt -s nullglob
 for md in "$SOURCE_VAULT"/*.md; do
     base=$(basename "$md")

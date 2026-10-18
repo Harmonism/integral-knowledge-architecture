@@ -3,14 +3,14 @@
  * Companion RAG — Hybrid Retrieval-Augmented Generation from the indexed Harmonia vault.
  *
  * Uses a three-layer hybrid retrieval strategy:
- * 1. SEMANTIC SEARCH — OpenAI embeddings + cosine similarity (primary)
+ * 1. SEMANTIC SEARCH — bge-m3 embeddings through OpenRouter + cosine similarity (primary)
  * 2. FTS5 KEYWORD SEARCH — full-text search with synonym expansion (complementary)
  * 3. DOMAIN DETECTION — Wheel pillar awareness (contextual boost)
  *
  * Results from all layers are merged, deduplicated, and ranked by a combined
  * score that weights semantic relevance, keyword relevance, and article priority.
  *
- * Graceful fallback: if no OpenAI API key is configured or the embedding call
+ * Graceful fallback: if OpenRouter is not configured or the embedding call
  * fails, falls back to FTS5-only retrieval (v1 behavior).
  *
  * The vault is indexed offline by index-vault.py and uploaded as vault-index.db.
@@ -26,7 +26,8 @@ class CompanionRAG {
     private ?string $openaiKey = null;
 
     /** @var int Embedding dimensions for text-embedding-3-small */
-    private const EMBED_DIMS = 1536;
+    private const EMBED_DIMS = 1024;
+    private const EMBED_MODEL = 'baai/bge-m3';
 
     /** @var float Weight for semantic score in hybrid ranking (0-1) */
     private const SEMANTIC_WEIGHT = 0.7;
@@ -45,8 +46,10 @@ class CompanionRAG {
                 $this->available = true;
 
                 // Check if embeddings exist in the database
-                if ($this->openaiKey) {
-                    $stmt = $this->db->query('SELECT COUNT(*) FROM chunk_embeddings');
+                // (only this model's: an index built with another model is not comparable)
+                if (function_exists('llm_cfg') && llm_cfg('LLM_PROVIDER') === 'openrouter' && llm_cfg('LLM_API_KEY')) {
+                    $stmt = $this->db->prepare('SELECT COUNT(*) FROM chunk_embeddings WHERE model = ?');
+                    $stmt->execute([self::EMBED_MODEL]);
                     $count = $stmt->fetchColumn();
                     $this->embeddingsAvailable = ($count > 0);
                 }
@@ -86,7 +89,7 @@ class CompanionRAG {
      * ignored — the practitioner gets canonical EN truth rather than outdated
      * content in their language.
      *
-     * This guarantees MunAI always delivers the most up-to-date doctrinal
+     * This guarantees Lodestone always delivers the most up-to-date doctrinal
      * state regardless of translation coverage.
      *
      * @param string $query  The user's message
@@ -454,7 +457,7 @@ class CompanionRAG {
 
     /**
      * Perform semantic search using embeddings.
-     * Embeds the query via OpenAI API, then computes cosine similarity
+     * Embeds the query through OpenRouter, then computes cosine similarity
      * against all stored chunk embeddings.
      */
     private function semanticSearch(string $query, int $limit): array {
@@ -520,24 +523,28 @@ class CompanionRAG {
     }
 
     /**
-     * Embed a query string using OpenAI API.
+     * Embed a query string through OpenRouter (bge-m3, as the index).
      * Returns float array or null on failure.
      */
     private function embedQuery(string $query): ?array {
-        if (!$this->openaiKey) return null;
+        // Through OpenRouter, with the model the index was built with
+        // (index-vault.py), under the account's no-training, zero-retention
+        // routing. Without OpenRouter configured, retrieval is keyword only.
+        if (!function_exists('llm_cfg') || llm_cfg('LLM_PROVIDER') !== 'openrouter' || !llm_cfg('LLM_API_KEY')) return null;
 
         $payload = json_encode([
-            'model' => 'text-embedding-3-small',
+            'model' => self::EMBED_MODEL,
             'input' => mb_substr($query, 0, 8000),
+            'provider' => ['data_collection' => 'deny'],
         ]);
 
-        $ch = curl_init('https://api.openai.com/v1/embeddings');
+        $ch = curl_init(rtrim(llm_cfg('LLM_BASE_URL'), '/') . '/embeddings');
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $this->openaiKey,
+                'Authorization: Bearer ' . llm_cfg('LLM_API_KEY'),
             ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 10,
@@ -565,7 +572,8 @@ class CompanionRAG {
             return null;
         }
 
-        return $data['data'][0]['embedding'];
+        $emb = $data['data'][0]['embedding'];
+        return count($emb) === self::EMBED_DIMS ? $emb : null;
     }
 
     /**
@@ -877,7 +885,7 @@ class CompanionRAG {
      * e.g. "Wheel of Harmony/health/Sleep and Recovery.md"
      *   → "https://harmonism.io/wheel-of-harmony/health/sleep-and-recovery"
      *
-     * Absolute URLs are required so MunAI can surface clickable links across
+     * Absolute URLs are required so Lodestone can surface clickable links across
      * surfaces (Telegram and elsewhere); relative paths render as plain text
      * in chat clients that don't have the site as their origin.
      */

@@ -2,15 +2,15 @@
 /**
  * companion-terminology.php
  *
- * Shared graduated-doctrinal-terminology layer for MunAI (Phase A §6.3).
+ * Shared graduated-doctrinal-terminology layer for Lodestone (Phase A §6.3).
  * Consumed by both companion surfaces via require_once:
  *   - Website: harmonia-astro/companion-api.php (via post-build copy into dist/)
  *   - Telegram: harmonia-astro/telegram-companion/telegram-bot.php
  *
- * Architecture (from "MunAI — Lessons from the Companion Landscape" §6.3):
+ * Architecture (from "Lodestone — Lessons from the Companion Landscape" §6.3):
  *
  *   The vault speaks in fluent Harmonist vocabulary because it is doctrine
- *   addressed to readers who have entered the system. MunAI in conversation
+ *   addressed to readers who have entered the system. Lodestone in conversation
  *   meets people upstream of that vocabulary — where Logos, Ṛta, Dharma,
  *   chakras, Presence-as-centre still need to be earned, not asserted.
  *

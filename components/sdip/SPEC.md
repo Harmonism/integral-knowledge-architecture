@@ -524,7 +524,7 @@ The protocol works without tokens. The federated form has natural fee-market sha
 ### Informative
 
 - HarmonAI Design Document — Harmonia internal, reference-implementation design rationale
-- Running MunAI on Your Own Substrate — Harmonia public, practitioner-scale documentation
+- Running Lodestone on Your Own Substrate — Harmonia public, practitioner-scale documentation
 - The Sovereign Stack — Harmonia public, contextualizes SDIP within the broader sovereign-infrastructure landscape
 
 ### Related Work
@@ -550,4 +550,4 @@ The protocol abstraction emerged from the operational architecture of HarmonAI, 
 
 ---
 
-*See also: [[HarmonAI Design Document]], [[Running MunAI on Your Own Substrate]], [[The Sovereign Stack]], [[Cypherpunks and Harmonism]], [[MunAI]].*
+*See also: [[HarmonAI Design Document]], [[Running Lodestone on Your Own Substrate]], [[The Sovereign Stack]], [[Cypherpunks and Harmonism]], [[Lodestone]].*

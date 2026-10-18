@@ -54,6 +54,7 @@ import struct
 import sys
 import time
 import urllib.request
+import urllib.error
 import yaml
 
 
@@ -327,7 +328,7 @@ def create_database(db_path: str) -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS chunk_embeddings (
             chunk_id INTEGER PRIMARY KEY,
             embedding BLOB NOT NULL,
-            model TEXT DEFAULT 'text-embedding-3-small',
+            model TEXT DEFAULT 'baai/bge-m3',
             FOREIGN KEY (chunk_id) REFERENCES chunks(id)
         )
     ''')
@@ -380,17 +381,22 @@ def extract_summary(body: str, max_len: int = 500) -> str:
 # Embeddings (EN-only)
 # ---------------------------------------------------------------------------
 
-EMBEDDING_MODEL = 'text-embedding-3-small'
-EMBEDDING_DIMS = 1536
-EMBEDDING_BATCH_SIZE = 100  # OpenAI allows up to 2048 inputs per call
+# Open-weight, multilingual, served through OpenRouter under the account's
+# no-training, zero-retention routing (the same rule as Lodestone's generation).
+# Query side: companion-rag.php and telegram-rag.php must use the same model.
+EMBEDDING_MODEL = 'baai/bge-m3'
+EMBEDDING_DIMS = 1024
+EMBEDDING_BATCH_SIZE = 32
+EMBEDDING_URL = 'https://openrouter.ai/api/v1/embeddings'
 
 
-def get_openai_embeddings(texts: list[str], api_key: str) -> list[list[float]]:
-    """Call OpenAI embeddings API for a batch of texts."""
-    url = 'https://api.openai.com/v1/embeddings'
+def get_embeddings(texts: list[str], api_key: str) -> list[list[float]]:
+    """Embed a batch of texts through OpenRouter."""
+    url = EMBEDDING_URL
     payload = json.dumps({
         'model': EMBEDDING_MODEL,
         'input': texts,
+        'provider': {'data_collection': 'deny'},
     }).encode('utf-8')
 
     req = urllib.request.Request(url, data=payload, headers={
@@ -398,14 +404,29 @@ def get_openai_embeddings(texts: list[str], api_key: str) -> list[list[float]]:
         'Authorization': f'Bearer {api_key}',
     })
 
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            sorted_data = sorted(data['data'], key=lambda x: x['index'])
-            return [d['embedding'] for d in sorted_data]
-    except Exception as e:
-        print(f"  ERROR: OpenAI API call failed: {e}")
-        return []
+    # A rate limit (429) or a provider hiccup (5xx) is waited out, not skipped.
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                sorted_data = sorted(data['data'], key=lambda x: x['index'])
+                out = [d['embedding'] for d in sorted_data]
+                if any(len(v) != EMBEDDING_DIMS for v in out):
+                    print(f"  ERROR: {EMBEDDING_MODEL} returned vectors that are not {EMBEDDING_DIMS}-dimensional")
+                    return []
+                return out
+        except urllib.error.HTTPError as e:
+            if (e.code == 429 or e.code >= 500) and attempt < 5:
+                wait = int(e.headers.get('Retry-After') or 0) or 2 ** (attempt + 1)
+                print(f"  HTTP {e.code}; waiting {wait}s and trying again")
+                time.sleep(wait)
+                continue
+            print(f"  ERROR: embedding call failed: {e}")
+            return []
+        except Exception as e:
+            print(f"  ERROR: embedding call failed: {e}")
+            return []
+    return []
 
 
 def pack_embedding(embedding: list[float]) -> bytes:
@@ -421,6 +442,12 @@ def generate_embeddings(conn: sqlite3.Connection, api_key: str):
     any-language queries.
     """
     cursor = conn.cursor()
+
+    # Vectors from another model cannot be compared with this one's: drop them.
+    cursor.execute('DELETE FROM chunk_embeddings WHERE model IS NULL OR model != ?', (EMBEDDING_MODEL,))
+    if cursor.rowcount:
+        print(f"Removed {cursor.rowcount} embeddings made with another model.")
+    conn.commit()
 
     cursor.execute('''
         SELECT c.id, c.heading, c.content, a.title, a.domain
@@ -450,7 +477,7 @@ def generate_embeddings(conn: sqlite3.Connection, api_key: str):
             parts.append(content)
             texts.append(' '.join(parts)[:8000])
 
-        embeddings = get_openai_embeddings(texts, api_key)
+        embeddings = get_embeddings(texts, api_key)
 
         if len(embeddings) != len(batch):
             print(f"  WARNING: Expected {len(batch)} embeddings, got {len(embeddings)}. Skipping batch.")
@@ -634,7 +661,7 @@ def report_translation_freshness(conn: sqlite3.Connection):
         print(f"  [{lang}] fresh: {fresh} ({fresh_pct}%) | stale: {stale} | missing: {missing} | total coverage: {translated}/{en_total} ({coverage_pct}%)")
 
 
-def index_vault(vault_path: str, db_path: str, openai_key: str = None,
+def index_vault(vault_path: str, db_path: str, embed_key: str = None,
                  translations_path: str = None):
     """Walk the EN vault + translation roots and index all markdown files."""
     conn = create_database(db_path)
@@ -707,11 +734,11 @@ def index_vault(vault_path: str, db_path: str, openai_key: str = None,
     if total_translation_indexed > 0:
         report_translation_freshness(conn)
 
-    if openai_key:
-        generate_embeddings(conn, openai_key)
+    if embed_key:
+        generate_embeddings(conn, embed_key)
     else:
-        print("\nNo OpenAI API key provided — skipping embedding generation.")
-        print("To generate embeddings, re-run with --openai-key YOUR_KEY or set OPENAI_API_KEY env var.")
+        print("\nNo OpenRouter API key provided — skipping embedding generation.")
+        print("To generate embeddings, re-run with --openrouter-key YOUR_KEY or set OPENROUTER_API_KEY env var.")
 
     conn.close()
     print(f"\nDatabase saved to: {db_path}")
@@ -728,16 +755,16 @@ if __name__ == '__main__':
     parser.add_argument('--translations', default=None,
                         help='Path to i18n/translations/ directory. If omitted, only English is indexed. '
                              'Default candidate: ../i18n/translations relative to this script.')
-    parser.add_argument('--openai-key', default=None, help='OpenAI API key for embedding generation')
+    parser.add_argument('--openrouter-key', default=None, help='OpenRouter API key for embedding generation (or OPENROUTER_API_KEY)')
     parser.add_argument('--embeddings-only', action='store_true',
                         help='Skip vault indexing, only generate embeddings for existing chunks')
     args = parser.parse_args()
 
-    openai_key = args.openai_key or os.environ.get('OPENAI_API_KEY')
+    embed_key = args.openrouter_key or os.environ.get('OPENROUTER_API_KEY')
 
     if args.embeddings_only:
-        if not openai_key:
-            print("Error: --embeddings-only requires an OpenAI API key (--openai-key or OPENAI_API_KEY env var)")
+        if not embed_key:
+            print("Error: --embeddings-only requires an OpenRouter API key (--openrouter-key or OPENROUTER_API_KEY env var)")
             sys.exit(1)
         if not os.path.isfile(args.output):
             print(f"Error: database not found at {args.output}. Run full indexing first.")
@@ -747,11 +774,11 @@ if __name__ == '__main__':
             CREATE TABLE IF NOT EXISTS chunk_embeddings (
                 chunk_id INTEGER PRIMARY KEY,
                 embedding BLOB NOT NULL,
-                model TEXT DEFAULT 'text-embedding-3-small',
+                model TEXT DEFAULT 'baai/bge-m3',
                 FOREIGN KEY (chunk_id) REFERENCES chunks(id)
             )
         ''')
-        generate_embeddings(conn, openai_key)
+        generate_embeddings(conn, embed_key)
         conn.close()
         print(f"\nDatabase updated: {args.output}")
     else:
@@ -767,4 +794,4 @@ if __name__ == '__main__':
                 translations_path = candidate
                 print(f"Using default translations path: {translations_path}")
 
-        index_vault(args.vault, args.output, openai_key, translations_path)
+        index_vault(args.vault, args.output, embed_key, translations_path)

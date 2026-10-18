@@ -28,7 +28,7 @@ define('ANTHROPIC_API_KEY', 'sk-ant-api03-YOUR-KEY-HERE');
 // If not set, RAG falls back to FTS5 keyword search only
 define('OPENAI_API_KEY', 'sk-YOUR-OPENAI-KEY-HERE');
 
-// xAI API Key (for MunAI's spoken replies — see companion-voice.php and /voice)
+// xAI API Key (for Lodestone's spoken replies — see companion-voice.php and /voice)
 // Grok TTS, the same engine that narrates the articles on harmonism.io.
 // ~$15 per 1M characters; a spoken reply is typically 400-900 characters.
 // Tier B secret with bounded spend (Decision #485). Optional: without it,

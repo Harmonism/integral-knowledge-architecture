@@ -735,7 +735,10 @@ def sync_profiles(skip_download: bool = False):
 
     # Step 3: Process both sources
     t_created, t_updated, t_total = process_telegram_db(LOCAL_TELEGRAM_DB)
-    w_created, w_updated, w_total = process_website_db(LOCAL_WEBSITE_DB)
+    # Decision #1372: website memory is held by practitioners, not by the
+    # server; only Telegram's is read. (The website database still downloads
+    # for its account rows, and is not processed.)
+    w_created, w_updated, w_total = 0, 0, 0
 
     total_created = t_created + w_created
     total_updated = t_updated + w_updated

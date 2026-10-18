@@ -10,7 +10,7 @@ Every wisdom tradition faces a transmission bottleneck. The knowledge exists —
 
 ## The Solution in Brief
 
-The AI companion combines the scalability of text with the personalisation of the teacher — structured not by a generic pedagogical model but by the knowledge system's own architecture. In Harmonism, MunAI is not a chatbot answering questions *about* the Wheel. It is an intelligence that *navigates the Wheel with the practitioner*: knows where they are (through the Wheel-structured profile), knows where the architecture suggests they go next (through the developmental sequence and content priority tiers), and knows what the system holds as doctrine versus what remains open (through epistemic metadata and the doctrinal backbone).
+The AI companion combines the scalability of text with the personalisation of the teacher — structured not by a generic pedagogical model but by the knowledge system's own architecture. In Harmonism, Lodestone is not a chatbot answering questions *about* the Wheel. It is an intelligence that *navigates the Wheel with the practitioner*: knows where they are (through the Wheel-structured profile), knows where the architecture suggests they go next (through the developmental sequence and content priority tiers), and knows what the system holds as doctrine versus what remains open (through epistemic metadata and the doctrinal backbone).
 
 ## What Distinguishes an Architectural Companion from an AI Tutor
 

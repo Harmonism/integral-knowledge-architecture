@@ -268,7 +268,7 @@ def serve(
         if not user_input:
             break
 
-        console.print("[bold magenta]MunAI:[/bold magenta] ", end="")
+        console.print("[bold magenta]Lodestone:[/bold magenta] ", end="")
         for token in harness.chat(practitioner_id, user_input):
             console.print(token, end="")
         console.print("")

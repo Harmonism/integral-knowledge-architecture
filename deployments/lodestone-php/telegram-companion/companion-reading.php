@@ -2,7 +2,7 @@
 /**
  * The Wisdom Canon — shared reading-track engine.
  *
- * Surface-agnostic. Both MunAI surfaces consume this file:
+ * Surface-agnostic. Both Lodestone surfaces consume this file:
  *   - telegram-companion/telegram-bot.php  (subject_kind 'telegram', subject_id = chat id)
  *   - companion-api.php / reading-api.php  (subject_kind 'web', subject_id = client uuid)
  *
@@ -896,7 +896,7 @@ function readingMarkCheckin(PDO $db, int $checkinId, string $state, int $outreac
  * Check-ins due for one subject.
  *
  * The website has no outbound channel of its own, so a web arc's taper slots
- * do not become push messages — they become the question MunAI raises at the
+ * do not become push messages — they become the question Lodestone raises at the
  * top of the practitioner's next conversation, and are consumed there. Same
  * taper, same ceiling, no new delivery infrastructure, and nothing arrives
  * that the practitioner did not open the door for.

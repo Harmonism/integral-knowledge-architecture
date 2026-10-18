@@ -170,5 +170,5 @@ A fork that instantiates a different tradition's SDIP bundle is welcome to live 
 
 - [SPEC.md](SPEC.md) — the normative specification
 - [HarmonAI Design Document](https://harmonism.io/harmonai) — the reference-implementation rationale (developer audience)
-- [Running MunAI on Your Own Substrate](https://harmonism.io/world/frontiers/running-munai-on-your-own-substrate) — practitioner-scale documentation
+- [Running Lodestone on Your Own Substrate](https://harmonism.io/world/frontiers/running-lodestone-on-your-own-substrate) — practitioner-scale documentation
 - [The Sovereign Stack](https://harmonism.io/world/frontiers/the-sovereign-stack) — context within the broader sovereign-infrastructure landscape

@@ -47,7 +47,7 @@ harmonia-architecture/
 ├── CHANGELOG.md
 │
 ├── deployments/                       # Harmonia's own running systems, published for audit
-│   └── munai-php/                     # Not a reference implementation — see its README
+│   └── lodestone-php/                     # Not a reference implementation — see its README
 │
 ├── patterns/                          # Per-pattern adoption notes
 │   ├── i-fractal-topology/

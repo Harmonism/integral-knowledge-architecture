@@ -109,14 +109,14 @@ class CompanionMemory {
             // Column already exists — safe to ignore
         }
 
-        // Migration: MunAI Core version stamping (August 2026 corpus audit).
-        // Every assistant row records which MunAI produced it — the declared
+        // Migration: Lodestone Core version stamping (August 2026 corpus audit).
+        // Every assistant row records which Lodestone produced it — the declared
         // Core semver, the resolved model ID, and an 8-char hash of the static
         // system-prompt prefix (persona + doctrinal backbone: everything before
         // CACHE_BREAKPOINT_MARKER). The semver is the label; the hash is the
         // ground truth, and it makes drift between the two surfaces visible in
         // the data rather than only in the deploy log. Without this, no change
-        // to MunAI can be evaluated against the corpus afterwards — the model
+        // to Lodestone can be evaluated against the corpus afterwards — the model
         // moved from opus-4-6 to opus-4-7 mid-corpus with nothing recording it.
         try { $this->db->exec('ALTER TABLE messages ADD COLUMN core_version TEXT DEFAULT NULL'); } catch (PDOException $e) {}
         try { $this->db->exec('ALTER TABLE messages ADD COLUMN model TEXT DEFAULT NULL'); } catch (PDOException $e) {}
@@ -249,7 +249,7 @@ class CompanionMemory {
             // subscription_plan: 'monthly' | 'yearly' | 'founder_monthly' | empty.
             // *_at: unix timestamps. comp_expires_at: when complimentary access reverts to free.
             // lemonsqueezy_*_id: linkage to website client's LS records via verified-email bridge.
-            // messages_24h_count / messages_24h_reset_at: rolling-window MunAI rate-limit.
+            // messages_24h_count / messages_24h_reset_at: rolling-window Lodestone rate-limit.
             'subscription_status TEXT DEFAULT "free"',
             'subscription_plan TEXT DEFAULT ""',
             'subscription_started_at INTEGER DEFAULT 0',
@@ -435,7 +435,7 @@ class CompanionMemory {
 
         // Migration: burst coalescing (August 2026 corpus audit).
         //
-        // The audit measured 123 places where MunAI sent two or more answers
+        // The audit measured 123 places where Lodestone sent two or more answers
         // with no practitioner turn between them. 113 of those followed a
         // multi-message burst: the webhook enqueued one job per inbound Telegram
         // message, and each job answered its own fragment from a history
@@ -613,7 +613,7 @@ class CompanionMemory {
     }
 
     /**
-     * Record that a user has explicitly consented to MunAI processing their
+     * Record that a user has explicitly consented to Lodestone processing their
      * health / psychological / spiritual conversation content. $version
      * identifies which consent language was shown (e.g. 'telegram-2026-04-18')
      * or 'grandfathered-2026-04-18' for pre-existing active users auto-stamped
@@ -944,7 +944,7 @@ class CompanionMemory {
      * The asymmetry is deliberate: Decision #386's leak fired because BOTH
      * roles got timestamped, so the model saw its own past replies starting
      * with bracketed timestamps and learned the pattern as a stylistic
-     * feature of MunAI. Stamping only user messages removes that pattern
+     * feature of Lodestone. Stamping only user messages removes that pattern
      * from anything the model produced, so there's no template to mirror.
      * Format [ago: X] is also mechanically distinct from the
      * [YYYY-MM-DD HH:MM UTC] pattern that leaked — no chat-client trains

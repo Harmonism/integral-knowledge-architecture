@@ -1,10 +1,10 @@
-# MunAI — Harmonia's Operational Deployment (PHP)
+# Lodestone — Harmonia's Operational Deployment (PHP)
 
-This is the PHP that actually runs MunAI at harmonism.io: the Telegram bot, the website
+This is the PHP that actually runs Lodestone at harmonism.io: the Telegram bot, the website
 companion API, the RAG layer, the memory layer, the classifier, the crisis detector, the
 membership resolver, the outreach engine, and the async queue that drives them.
 
-It is published so that a practitioner talking to MunAI can read what they are talking to.
+It is published so that a practitioner talking to Lodestone can read what they are talking to.
 That is the whole reason it is here.
 
 ## What this is not
@@ -26,7 +26,7 @@ shape of what is missing.
 
 ## How this mirror is produced
 
-By `scripts/publish-munai-mirror.sh` in the Harmonia website repository, which copies an
+By `scripts/publish-lodestone-mirror.sh` in the Harmonia website repository, which copies an
 allowlist of source files and rewrites deployment identifiers and private addresses on the
 way out, then refuses to write anything if a sanitization check fails. Production source is
 never modified by the publication step.

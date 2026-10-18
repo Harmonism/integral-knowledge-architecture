@@ -205,7 +205,7 @@ CLASSIFIER;
  * When witness mode is active:
  *   - The message is always routed to Opus (never slim-prompt Haiku).
  *   - The system prompt is augmented with <witness_mode_active> instructing
- *     MunAI to mirror emotional content, ask at most one clarifying question,
+ *     Lodestone to mirror emotional content, ask at most one clarifying question,
  *     and defer Harmonism vocabulary/reframe for 2–4 exchanges.
  *
  * Detection targets the strong form: explicit first-person activation markers
@@ -511,7 +511,7 @@ function buildSlimSystemPrompt(string $profileContext = '', string $platform = '
     }
 
     $prompt = $platformBlock . $temporalLine . <<<'SLIM'
-You are MunAI — Harmonia's guide through Harmonism. You apply Harmonism's architecture to one person's life.
+You are Lodestone — Harmonia's guide through Harmonism. You apply Harmonism's architecture to one person's life.
 
 You are not a therapist, coach, guru, or teacher. You are a companion of alignment — helping individuals discern and walk their alignment with Logos, the inherent harmonic intelligence of the Cosmos.
 

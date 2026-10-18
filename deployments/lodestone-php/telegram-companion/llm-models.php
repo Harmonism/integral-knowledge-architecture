@@ -1,9 +1,9 @@
 <?php
 /**
- * llm-models.php — the models a practitioner may choose for hosted MunAI.
+ * llm-models.php — the models a practitioner may choose for hosted Lodestone.
  *
  * The list is closed and lives in code, not in config: a model enters only
- * after it has passed scripts/munai-fidelity-suite.py on the backbone version
+ * after it has passed scripts/lodestone-fidelity-suite.py on the backbone version
  * named in 'tested', and only if its weights are published (Decisions #1325,
  * #1329). Size is no bar: a model too large for any owned machine may be listed
  * (#1333). No closed model is listed, whatever its score. A model is left off
@@ -22,6 +22,9 @@
  *
  * When the backbone changes, re-run the suite on every entry and update
  * 'tested'; an entry that fails comes off the list in the same commit.
+ *
+ * The desktop app carries the same list as RECOMMENDED in
+ * lodestone/desktop/src/remote.js (#1341); change both in the same commit.
  */
 
 if (!function_exists('llm_model_catalog')) {

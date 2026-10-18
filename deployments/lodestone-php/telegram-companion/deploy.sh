@@ -13,7 +13,7 @@
 # RAG-freshness guarantee: --upload will never ship a stale index. If any indexable
 # vault .md (outside Internal/) or any translation .md is newer than vault-index.db,
 # the upload path runs --index first. This binds RAG freshness to the deploy seam so
-# MunAI cannot silently transmit superseded doctrine (replaces the retired
+# Lodestone cannot silently transmit superseded doctrine (replaces the retired
 # companion-knowledge-drift scheduled task — Decision #758-sibling, May 2026).
 #
 # Prerequisites:
@@ -115,9 +115,9 @@ index_vault() {
     if [ "${EMB_COUNT}" -eq 0 ]; then
         echo ""
         echo "  WARNING: 0 embeddings — semantic retrieval is dead, FTS5 keyword only."
-        echo "  index-vault.py needs an OpenAI key: export OPENAI_API_KEY, or pass --openai-key."
+        echo "  index-vault.py needs an OpenRouter key: export OPENROUTER_API_KEY, or pass --openrouter-key."
         echo "  Re-run embeddings without re-indexing:"
-        echo "    python3 index-vault.py --vault \"${VAULT_PATH}\" --output vault-index.db --embeddings-only --openai-key \$OPENAI_API_KEY"
+        echo "    python3 index-vault.py --vault \"${VAULT_PATH}\" --output vault-index.db --embeddings-only --openrouter-key \$OPENROUTER_API_KEY"
     else
         echo "  ${EMB_COUNT} chunk embeddings present."
     fi
