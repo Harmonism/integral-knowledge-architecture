@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = [
     "sdip", "sovereign", "inference", "rag", "llm",
-    "doctrinal", "harmonism", "harmonai", "sovereignty"
+    "doctrinal", "harmonism", "lode", "sovereignty"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

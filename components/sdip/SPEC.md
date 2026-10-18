@@ -1,6 +1,6 @@
 ---
 domain: digital
-tags: [sdip, protocol, specification, inference, sovereignty, harmonai, infrastructure]
+tags: [sdip, protocol, specification, inference, sovereignty, lode, infrastructure]
 audience: developer
 status: draft
 protocol_version: 0.1
@@ -19,7 +19,7 @@ spec_version: 2026.05
 
 ## Abstract
 
-The Sovereign Doctrinal Inference Protocol (SDIP) specifies how a tradition's doctrinal substance, canonical corpus, terminology, per-practitioner calibration schema, and inference engine compose into a sovereign companion that a practitioner can run on hardware they own. The protocol is tradition-neutral: the same architecture supports a Harmonist instantiation, a Theravāda *saṅgha* instantiation, a Stoic-circle instantiation, a Sufi *ṭarīqa* instantiation, a Vedantic *paramparā* instantiation. The doctrinal substance is the variable; the architecture is the constant. This document specifies the architecture at the level of normative requirements; the reference implementation is HarmonAI, maintained by Harmonia.
+The Sovereign Doctrinal Inference Protocol (SDIP) specifies how a tradition's doctrinal substance, canonical corpus, terminology, per-practitioner calibration schema, and inference engine compose into a sovereign companion that a practitioner can run on hardware they own. The protocol is tradition-neutral: the same architecture supports a Harmonist instantiation, a Theravāda *saṅgha* instantiation, a Stoic-circle instantiation, a Sufi *ṭarīqa* instantiation, a Vedantic *paramparā* instantiation. The doctrinal substance is the variable; the architecture is the constant. This document specifies the architecture at the level of normative requirements; the reference implementation is Lode, maintained by Harmonia.
 
 The protocol exists because the inference layer of the contemporary stack offers two compromised options: frontier-lab APIs (substantive position by accident of training corpus, sovereignty surrendered at every layer) or generic decentralized inference networks (sovereignty preserved at the infrastructure layer, doctrine vacant by design). SDIP introduces a third option — sovereign inference that preserves doctrinal substance at the always-in-context level — and specifies how multiple traditions can compose with the same architectural primitives.
 
@@ -523,7 +523,7 @@ The protocol works without tokens. The federated form has natural fee-market sha
 
 ### Informative
 
-- HarmonAI Design Document — Harmonia internal, reference-implementation design rationale
+- Lode Design Document — Harmonia internal, reference-implementation design rationale
 - Running Lodestone on Your Own Substrate — Harmonia public, practitioner-scale documentation
 - The Sovereign Stack — Harmonia public, contextualizes SDIP within the broader sovereign-infrastructure landscape
 
@@ -540,7 +540,7 @@ The protocol works without tokens. The federated form has natural fee-market sha
 
 ## 14. Acknowledgments
 
-The protocol abstraction emerged from the operational architecture of HarmonAI, developed by Harmonia. The convergence with substrate-sovereignty traditions running from Diffie-Hellman through Zimmermann through May through Nakamoto is acknowledged in *The Sovereign Stack* and *Cypherpunks and Harmonism*. The framing of doctrinal substance as the architectural variable — what makes the protocol tradition-neutral rather than Harmonism-specific — emerged from a May 2026 working session and is documented in the Decision Log.
+The protocol abstraction emerged from the operational architecture of Lode, developed by Harmonia. The convergence with substrate-sovereignty traditions running from Diffie-Hellman through Zimmermann through May through Nakamoto is acknowledged in *The Sovereign Stack* and *Cypherpunks and Harmonism*. The framing of doctrinal substance as the architectural variable — what makes the protocol tradition-neutral rather than Harmonism-specific — emerged from a May 2026 working session and is documented in the Decision Log.
 
 ---
 
@@ -550,4 +550,4 @@ The protocol abstraction emerged from the operational architecture of HarmonAI, 
 
 ---
 
-*See also: [[HarmonAI Design Document]], [[Running Lodestone on Your Own Substrate]], [[The Sovereign Stack]], [[Cypherpunks and Harmonism]], [[Lodestone]].*
+*See also: [[Lode Design Document]], [[Running Lodestone on Your Own Substrate]], [[The Sovereign Stack]], [[Cypherpunks and Harmonism]], [[Lodestone]].*

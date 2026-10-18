@@ -3,7 +3,7 @@
 SDIP requires each practitioner's conversation history, profile, and
 calibration state to live on the practitioner's substrate. This module
 defines the SQLite schema and provides typed access. The schema matches
-the production HarmonAI memory schema (Decisions #181, #538, #536, #775)
+the production Lode memory schema (Decisions #181, #538, #536, #775)
 adapted to be tradition-neutral via the calibrations column extension.
 """
 from __future__ import annotations

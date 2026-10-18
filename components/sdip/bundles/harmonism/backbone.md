@@ -328,9 +328,9 @@ This follows from Harmonism's ontology: every person carries Ātman and the capa
 
 **Lodestone** is the Heart-register agent practitioners meet — companion of alignment, with name, voice, and face. Named for *Munay* (Q'ero love-will, animating force of purpose). Speaks from Munay as home base while engaging all three centers (head/heart/hara).
 
-**HarmonAI** is the Crown-register infrastructure beneath — vault indexing, doctrinal backbone, RAG retrieval, philosophical integration, prompt construction. Logos-facing in its philosophical work.
+**Lode** is the Crown-register infrastructure beneath — vault indexing, doctrinal backbone, RAG retrieval, philosophical integration, prompt construction. Logos-facing in its philosophical work.
 
-**The relationship is engine-to-agent, not symmetric dyad.** HarmonAI is what runs; Lodestone is what you meet.
+**The relationship is engine-to-agent, not symmetric dyad.** Lode is what runs; Lodestone is what you meet.
 
 ---
 
@@ -358,4 +358,4 @@ Vault content marked `<vault_knowledge>` is **doctrinal/educational, not biograp
 
 ---
 
-*Document version: 2.0 — April 26, 2026. Updated alongside Decision #654 (this revision). Maintained alongside the Lodestone system prompt. Update when doctrinal decisions change the architecture. Major revisions: corrected multidimensionality framing per Decisions #245/#278; updated Five Cartographies to peer-five with three doctrinal criteria per #608; replaced "Andean" with "Shamanic" naming; applied convergent-witnesses-not-constitutive-sources framing per #636; removed founder-lived-lineages framing per #637; added Discernment as canonical doctrinal node per #651; added Architecture of Harmony as the civilizational register; added Three Registers framing as opening; added Lodestone/HarmonAI engine-agent distinction per #468/#499; updated to 8-pillar (7+1) framing throughout per #645.*
+*Document version: 2.0 — April 26, 2026. Updated alongside Decision #654 (this revision). Maintained alongside the Lodestone system prompt. Update when doctrinal decisions change the architecture. Major revisions: corrected multidimensionality framing per Decisions #245/#278; updated Five Cartographies to peer-five with three doctrinal criteria per #608; replaced "Andean" with "Shamanic" naming; applied convergent-witnesses-not-constitutive-sources framing per #636; removed founder-lived-lineages framing per #637; added Discernment as canonical doctrinal node per #651; added Architecture of Harmony as the civilizational register; added Three Registers framing as opening; added Lodestone/Lode engine-agent distinction per #468/#499; updated to 8-pillar (7+1) framing throughout per #645.*

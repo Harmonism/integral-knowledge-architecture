@@ -50,7 +50,7 @@
         },
         "advancement_detector": {
           "type": "string",
-          "description": "Identifier of the detector that proposes advancements. Either 'builtin:{name}' for HarmonAI reference detectors, or 'tradition:{name}' for tradition-specific detectors implemented in the bundle's detectors/ directory."
+          "description": "Identifier of the detector that proposes advancements. Either 'builtin:{name}' for Lode reference detectors, or 'tradition:{name}' for tradition-specific detectors implemented in the bundle's detectors/ directory."
         },
         "inject_as": {
           "type": "string",
