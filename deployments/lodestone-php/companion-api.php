@@ -136,6 +136,7 @@ if (file_exists($readingFile)) {
 }
 require_once __DIR__ . '/companion-learning.php';   // the profile jobs (#1372: shared with lodestone-learn.php)
 require_once __DIR__ . '/held-memory.php';          // memory the practitioner holds (#1372)
+require_once __DIR__ . '/hp-profile.php';           // the one reader of HP:: codes
 
 // ===== LOAD MEMORY & RAG =====
 $memoryAvailable = false;
@@ -515,193 +516,21 @@ if (!$hpSource && $held && $held['hp'] && preg_match('/^HP::[A-Za-z0-9+\/=]+$/',
     foreach ($memory->getProfileNotes($clientId) as $n) if (($n['category'] ?? '') === 'assessment_results') { $hasAssessment = true; break; }
     if (!$hasAssessment || $held['hp_fresh']) $hpSource = trim($held['hp']);   // a retaken assessment replaces nothing, it adds the newer reading
 }
-if ($hpSource && preg_match('/^HP::([A-Za-z0-9+\/=]+)$/', $hpSource, $hpMatch)) {
-    $decoded = @base64_decode($hpMatch[1], true);
-    if ($decoded) {
-        $profileData = @json_decode($decoded, true);
-        if ($profileData && isset($profileData['v']) && in_array($profileData['v'], [1, 2])) {
-            $assessmentProfile = $profileData;
-            $assessmentIngested = $hpFromMessage;   // a held profile joins quietly; a shared one is read now
-
-            // Write structured Wheel profile data directly to database (authenticated path only)
-            if ($memoryAvailable && $clientId && !$isAnonymous && isset($profileData['w'])) {
-                $engagementMap = function($functional, $developmental) {
-                    $avg = ($functional + $developmental) / 2;
-                    if ($avg >= 8.5) return 'sovereign';
-                    if ($avg >= 7.0) return 'sophisticated';
-                    if ($avg >= 5.0) return 'developing';
-                    if ($avg >= 3.0) return 'functional';
-                    if ($avg >= 1.5) return 'nascent';
-                    return 'absent';
-                };
-
-                $pillarMap = [
-                    'presence' => 'presence', 'health' => 'health',
-                    'matter' => 'matter', 'service' => 'service',
-                    'relationships' => 'relationships', 'learning' => 'learning',
-                    'nature' => 'nature', 'recreation' => 'recreation'
-                ];
-
-                foreach ($profileData['w'] as $pillar => $scores) {
-                    if (isset($pillarMap[$pillar]) && is_array($scores) && count($scores) >= 2) {
-                        $func = floatval($scores[0]);
-                        $dev = floatval($scores[1]);
-                        $level = $engagementMap($func, $dev);
-
-                        $gap = abs($func - $dev);
-                        $concerns = '';
-                        $strengths = '';
-                        $edges = '';
-
-                        if ($func > $dev + 2) {
-                            $concerns = "Functional capacity ({$func}/10) outpaces developmental engagement ({$dev}/10) — coasting on habit";
-                        }
-                        if ($dev > $func + 2) {
-                            $edges = "Developmental awareness ({$dev}/10) exceeds functional capacity ({$func}/10) — active growth edge";
-                        }
-                        if ($func >= 7 && $dev >= 7) {
-                            $strengths = "Strong pillar: functional {$func}/10, developmental {$dev}/10";
-                        }
-
-                        $memory->updateWheelPillar($clientId, $pillarMap[$pillar], [
-                            'engagement_level' => $level,
-                            'primary_concerns' => $concerns,
-                            'strengths' => $strengths,
-                            'growth_edges' => $edges,
-                            'notes' => "Assessment score: F={$func}/10 D={$dev}/10"
-                        ]);
-                    }
-                }
-
-                // Store a comprehensive profile summary from the assessment
-                $ennType = $profileData['e']['t'] ?? '?';
-                $ennWing = $profileData['e']['w'] ?? '?';
-                $ennInst = $profileData['e']['i'] ?? '?';
-                $ennHealth = $profileData['e']['h'] ?? '?';
-                $doshaD = $profileData['c']['d']['dominant'] ?? '?';
-                $doshaV = $profileData['c']['d']['V'] ?? '?';
-                $doshaP = $profileData['c']['d']['P'] ?? '?';
-                $doshaK = $profileData['c']['d']['K'] ?? '?';
-                $wuxing = $profileData['c']['x'] ?? '?';
-                $yinyang = $profileData['c']['y'] ?? 0;
-                $jing = $profileData['c']['j'] ?? '?';
-                $jingLevel = $profileData['c']['jl'] ?? '?';
-                $altitude = $profileData['alt'] ?? '?';
-
-                $doshaNames = ['V' => 'Vata', 'P' => 'Pitta', 'K' => 'Kapha'];
-                $wuxingNames = ['Wd' => 'Wood', 'F' => 'Fire', 'E' => 'Earth', 'Mt' => 'Metal', 'Wt' => 'Water'];
-                $yyLabel = $yinyang < -0.5 ? 'Yin-dominant' : ($yinyang < 0 ? 'slightly Yin' : ($yinyang > 0.5 ? 'Yang-dominant' : 'slightly Yang'));
-
-                $doshaLabel = $doshaNames[$doshaD] ?? $doshaD;
-                $wuxingLabel = $wuxingNames[$wuxing] ?? $wuxing;
-
-                $assessmentSummary = "HARMONIC PROFILE ASSESSMENT (formal ~140-question instrument: three scored layers + biographical context + intentions):\n"
-                    . "Developmental altitude: {$altitude}/10\n"
-                    . "Enneagram: Type {$ennType}w{$ennWing}, instinctual stack {$ennInst}, health level {$ennHealth}/5\n"
-                    . "Constitution: {$doshaLabel}-dominant ({$doshaV}% V / {$doshaP}% P / {$doshaK}% K)\n"
-                    . "Wu Xing: {$wuxingLabel} primary\n"
-                    . "Yin-Yang: {$yyLabel} ({$yinyang})\n"
-                    . "Jing reserve: {$jingLevel} ({$jing}/10)\n"
-                    . "Wheel scores (F/D out of 10):";
-
-                foreach ($profileData['w'] as $pillar => $scores) {
-                    $assessmentSummary .= "\n  " . ucfirst($pillar) . ": F={$scores[0]} D={$scores[1]}";
-                }
-
-                // Biographical context (Decision #400, v2+)
-                if (isset($profileData['bio'])) {
-                    $bio = $profileData['bio'];
-                    $genderMap = ['male' => 'Male', 'female' => 'Female', 'other' => 'Other', 'prefer-not' => 'Not specified'];
-                    $bioParts = [];
-                    if (isset($bio['g'])) $bioParts[] = $genderMap[$bio['g']] ?? $bio['g'];
-                    if (isset($bio['a'])) $bioParts[] = "age " . $bio['a'];
-                    if (isset($bio['p'])) $bioParts[] = $bio['p'];
-                    if (isset($bio['rel'])) $bioParts[] = $bio['rel'];
-                    if (isset($bio['ch'])) $bioParts[] = "children: " . str_replace('yes-', '', $bio['ch']);
-                    if (isset($bio['work'])) $bioParts[] = "work: " . str_replace('-', ' ', $bio['work']);
-                    if (isset($bio['loc'])) $bioParts[] = "country: " . $bio['loc'];
-                    if (isset($bio['sm'])) $bioParts[] = "smoker: " . $bio['sm'];
-                    if (isset($bio['dr'])) $bioParts[] = "alcohol: " . $bio['dr'];
-                    $assessmentSummary .= "\nBiographical: " . implode(', ', $bioParts);
-                    if (isset($bio['note'])) $assessmentSummary .= "\nAdditional context: " . mb_substr($bio['note'], 0, 500);
-                }
-
-                // Intentions & coaching style (Decision #400, v2+)
-                if (isset($profileData['intent'])) {
-                    $intent = $profileData['intent'];
-                    if (isset($intent['goals'])) $assessmentSummary .= "\nGoals: " . mb_substr($intent['goals'], 0, 500);
-                    if (isset($intent['challenge'])) $assessmentSummary .= "\nBiggest challenge: " . mb_substr($intent['challenge'], 0, 500);
-                    if (isset($intent['resolve'])) $assessmentSummary .= "\nWants to resolve: " . mb_substr($intent['resolve'], 0, 500);
-                    if (isset($intent['style']) && is_array($intent['style'])) {
-                        $assessmentSummary .= "\nPreferred coaching style: " . implode(', ', $intent['style']);
-                    }
-                }
-
-                $memory->addProfileNote($clientId, 'assessment_results', $assessmentSummary, 'instrument');
-                $assessmentSummaryText = $assessmentSummary; // Expose for system-prompt injection below
-
-                // Replace the user message with a human-readable version
-                // so Claude sees structured data, not a base64 blob
-                if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument (three scored layers plus biographical context and intentions).]";
-            }
-
-            // Anonymous path: no DB write, but still build summary for prompt injection on this turn.
-            // Without this, Lodestone cannot read the anonymous user's assessment.
-            if ($isAnonymous && isset($profileData['w'])) {
-                $engagementMapAnon = function($functional, $developmental) {
-                    $avg = ($functional + $developmental) / 2;
-                    if ($avg >= 8.5) return 'sovereign';
-                    if ($avg >= 7.0) return 'sophisticated';
-                    if ($avg >= 5.0) return 'developing';
-                    if ($avg >= 3.0) return 'functional';
-                    if ($avg >= 1.5) return 'nascent';
-                    return 'absent';
-                };
-                $ennType = $profileData['e']['t'] ?? '?';
-                $ennWing = $profileData['e']['w'] ?? '?';
-                $ennInst = $profileData['e']['i'] ?? '?';
-                $ennHealth = $profileData['e']['h'] ?? '?';
-                $doshaD = $profileData['c']['d']['dominant'] ?? '?';
-                $doshaV = $profileData['c']['d']['V'] ?? '?';
-                $doshaP = $profileData['c']['d']['P'] ?? '?';
-                $doshaK = $profileData['c']['d']['K'] ?? '?';
-                $wuxing = $profileData['c']['x'] ?? '?';
-                $yinyang = $profileData['c']['y'] ?? 0;
-                $jing = $profileData['c']['j'] ?? '?';
-                $jingLevel = $profileData['c']['jl'] ?? '?';
-                $altitude = $profileData['alt'] ?? '?';
-                $doshaNames = ['V' => 'Vata', 'P' => 'Pitta', 'K' => 'Kapha'];
-                $wuxingNames = ['Wd' => 'Wood', 'F' => 'Fire', 'E' => 'Earth', 'Mt' => 'Metal', 'Wt' => 'Water'];
-                $yyLabel = $yinyang < -0.5 ? 'Yin-dominant' : ($yinyang < 0 ? 'slightly Yin' : ($yinyang > 0.5 ? 'Yang-dominant' : 'slightly Yang'));
-                $doshaLabel = $doshaNames[$doshaD] ?? $doshaD;
-                $wuxingLabel = $wuxingNames[$wuxing] ?? $wuxing;
-
-                $summary = "HARMONIC PROFILE ASSESSMENT (formal ~140-question instrument):\n"
-                    . "Developmental altitude: {$altitude}/10\n"
-                    . "Enneagram: Type {$ennType}w{$ennWing}, stack {$ennInst}, health {$ennHealth}/5\n"
-                    . "Constitution: {$doshaLabel}-dominant ({$doshaV}% V / {$doshaP}% P / {$doshaK}% K)\n"
-                    . "Wu Xing: {$wuxingLabel} primary | Yin-Yang: {$yyLabel} ({$yinyang}) | Jing: {$jingLevel} ({$jing}/10)\n"
-                    . "Wheel scores (F/D out of 10):";
-                foreach ($profileData['w'] as $pillar => $scores) {
-                    if (is_array($scores) && count($scores) >= 2) {
-                        $summary .= "\n  " . ucfirst($pillar) . ": F={$scores[0]} D={$scores[1]}";
-                    }
-                }
-                if (isset($profileData['bio'])) {
-                    $bio = $profileData['bio'];
-                    $bioParts = [];
-                    if (isset($bio['g'])) $bioParts[] = $bio['g'];
-                    if (isset($bio['a'])) $bioParts[] = "age " . $bio['a'];
-                    if (isset($bio['loc'])) $bioParts[] = "country: " . $bio['loc'];
-                    if ($bioParts) $summary .= "\nBiographical: " . implode(', ', $bioParts);
-                }
-                if (isset($profileData['intent']['goals'])) {
-                    $summary .= "\nGoals: " . mb_substr($profileData['intent']['goals'], 0, 500);
-                }
-                $assessmentSummaryText = $summary;
-                if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument.]";
-            }
-        }
+if ($hpSource && ($profileData = hp_decode($hpSource))) {
+    // One reader for the code: hp-profile.php (skip flags honoured, the same
+    // summary the dashboard shows).
+    $assessmentProfile = $profileData;
+    $assessmentIngested = $hpFromMessage;   // a held profile joins quietly; a shared one is read now
+    if ($memoryAvailable && $clientId && !$isAnonymous && isset($profileData['w'])) {
+        $assessmentSummaryText = hp_ingest($memory, $clientId, $profileData);
+        // Replace the user message with a human-readable version
+        // so the model sees structured data, not a base64 blob
+        if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument (three scored layers plus biographical context and intentions).]";
+    }
+    // Anonymous path: no write, the summary is read this turn only.
+    if ($isAnonymous && isset($profileData['w'])) {
+        $assessmentSummaryText = hp_summary($profileData);
+        if ($hpFromMessage) $messages[count($messages) - 1]['content'] = "[The person has shared their Harmonic Profile Assessment results via the formal ~140-question instrument.]";
     }
 }
 
@@ -1226,7 +1055,16 @@ if (file_exists($backbonePath)) {
     $backbone = file_get_contents($backbonePath);
     if ($backbone) {
         $systemPrompt .= "\n\n<doctrinal_backbone>\n{$backbone}\n</doctrinal_backbone>";
+        // A truncated or wrong file still answers, so say so in the log (October 19, 2026).
+        if (strlen($backbone) < 40000) {
+            error_log('companion-api: doctrinal backbone only ' . strlen($backbone) . ' bytes — truncated or wrong file at ' . $backbonePath);
+        }
+    } else {
+        error_log('companion-api: doctrinal backbone unreadable or empty at ' . $backbonePath);
     }
+} else {
+    // Without this line Lodestone answers with no backbone and nothing records it.
+    error_log('companion-api: doctrinal backbone missing at ' . $backbonePath);
 }
 
 // Lodestone Core prompt fingerprint (August 2026 corpus audit).
