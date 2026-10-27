@@ -24,7 +24,7 @@
  *     LLM_PROVIDER          'anthropic' | 'openrouter'          default 'anthropic'
  *     LLM_BASE_URL          chat-completions base URL           default 'https://openrouter.ai/api/v1'
  *     LLM_API_KEY           bearer key for LLM_BASE_URL         (required when not anthropic)
- *     LLM_MODEL             model for the Opus tier             default 'deepseek/deepseek-v4-pro-0813'
+ *     LLM_MODEL             model for the Opus tier             default 'deepseek/deepseek-v4.1-flash-1017' (#1476)
  *     LLM_MODEL_FAST        model for the Haiku tier            default LLM_MODEL
  *     LLM_MODEL_VISION      model used when a turn carries an image
  *                                                               default 'deepseek/deepseek-v4-flash-vision-exp'
@@ -46,7 +46,7 @@ function llm_cfg(string $name) {
         case 'LLM_PROVIDER':         return 'anthropic';
         case 'LLM_BASE_URL':         return 'https://openrouter.ai/api/v1';
         case 'LLM_API_KEY':          return '';
-        case 'LLM_MODEL':            return 'deepseek/deepseek-v4-pro-0813';
+        case 'LLM_MODEL':            return 'deepseek/deepseek-v4.1-flash-1017';   // #1476
         case 'LLM_MODEL_FAST':       return llm_cfg('LLM_MODEL');
         case 'LLM_MODEL_VISION':     return 'deepseek/deepseek-v4-flash-vision-exp';
         case 'LLM_REASONING_EFFORT': return 'none';
@@ -202,6 +202,9 @@ function llm_request_to_openai(array $a): array {
     // A listed model carries its own reasoning setting and token floor (some
     // providers make reasoning mandatory and spend the budget on it).
     $effort = $entry !== null ? (string)$entry['reasoning'] : (string)llm_cfg('LLM_REASONING_EFFORT');
+    // The classifier and slim replies stay fast: a listed effort is lowered to none
+    // on the Haiku tier ('' is left alone: those providers make reasoning mandatory).
+    if ($isFastTier && $effort !== '' && $effort !== 'none') $effort = 'none';
     $o['reasoning'] = $effort !== '' ? ['effort' => $effort, 'exclude' => true] : ['exclude' => true];
     if ($entry !== null && !empty($entry['min_tokens'])) $o['max_tokens'] = max($o['max_tokens'], (int)$entry['min_tokens']);
 

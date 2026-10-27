@@ -273,7 +273,7 @@ if (!function_exists('membership_usage_db')) {
 }
 
 /* ===========================================================================
- * The free allowance: a month at ten a day, then three a day for good (#1383).
+ * The free allowance: a month at ten a day, then five a day for good (#1383; five since October 24, 2026).
  *
  * The month runs from a member's first counted message on any surface. The
  * three that remain keep the website what it is, a free place to ask about
@@ -282,7 +282,7 @@ if (!function_exists('membership_usage_db')) {
  * =========================================================================== */
 if (!defined('MEMBERSHIP_TRIAL_DAYS')) define('MEMBERSHIP_TRIAL_DAYS', 30);
 if (!defined('MEMBERSHIP_TRIAL_CAP')) define('MEMBERSHIP_TRIAL_CAP', 10);
-if (!defined('MEMBERSHIP_FLOOR_CAP')) define('MEMBERSHIP_FLOOR_CAP', 3);
+if (!defined('MEMBERSHIP_FLOOR_CAP')) define('MEMBERSHIP_FLOOR_CAP', 5);   // three until October 24, 2026: too few to hold an exchange
 
 if (!function_exists('membership_free_cap')) {
     /** A free member's cap today: the trial's while their month lasts (or before it starts), the floor after. */
@@ -587,8 +587,18 @@ if (!function_exists('membership_cap_hit_message')) {
      * to running Lodestone on one's own substrate (the paid tier was retired on
      * October 8, 2026). For comp, no CTA — the cap is structural.
      */
-    function membership_cap_hit_message(string $status, int $resetAt, string $lang = 'en'): string {
+    function membership_cap_hit_message(string $status, int $resetAt, string $lang = 'en', string $surface = 'telegram'): string {
         $hoursUntil = max(1, (int)ceil(($resetAt - time()) / 3600));
+
+        // The way past the cap where the member is (October 24, 2026): on the
+        // website and in the extension a key of their own answers right there, so
+        // the message names it and where it is set, before a computer of their own.
+        // English only: the site is English (#1346); other languages keep the general message below.
+        $where = [
+            'website' => "You've used today's free messages; they start again in {$hoursUntil}h. With an OpenRouter key of your own, Lodestone answers without a limit, here and in the app: [open Lodestone](/lodestone-app/), go to Settings → Change where Lodestone thinks, choose OpenRouter and paste your key. You pay OpenRouter for what you use, usually a fraction of a cent a message. A model on your own computer, through [Lodestone Desktop](/lodestone-desktop), also has no limit, and is the one route where no one else reads what you write.\n\n[Every route, side by side](/lodestone#where-lodestone-runs)",
+            'extension' => "You've used today's free messages; they start again in {$hoursUntil}h. With an OpenRouter key of your own, the extension answers without a limit: open its options (right-click the Lodestone icon → Options), paste the key under Your own OpenRouter key, and let Lodestone reach OpenRouter. You pay OpenRouter for what you use, usually a fraction of a cent a message. A model on your own computer, through [Lodestone Desktop](/lodestone-desktop), also has no limit, and is the one route where no one else reads what you write.\n\n[Every route, side by side](/lodestone#where-lodestone-runs)",
+        ];
+        if ($status === 'free' && $lang === 'en' && isset($where[$surface])) return $where[$surface];
 
         if ($status === 'free') {
             // The paid tier was retired on October 8, 2026. The way past the

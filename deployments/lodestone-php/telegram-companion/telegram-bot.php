@@ -419,7 +419,7 @@ if (!$isLinked && $userMsgCount >= $TELEGRAM_FREE_MSG_LIMIT && !$isGracePeriodUs
 // Soft nudge at 3 messages before the limit (for non-linked, non-grace-period users)
 if (!$isLinked && !$isGracePeriodUser && $userMsgCount === ($TELEGRAM_FREE_MSG_LIMIT - 3)) {
     $remaining = $TELEGRAM_FREE_MSG_LIMIT - $userMsgCount;
-    $nudge = "({$remaining} messages remaining — create your free account at harmonism.io/member/register.php to keep talking, ten messages a day for a month, then three a day, with memory, or run Lodestone yourself: harmonism.io/lodestone-desktop)";
+    $nudge = "({$remaining} messages remaining — create your free account at harmonism.io/member/register.php to keep talking, ten messages a day for a month, then five a day, with memory, or run Lodestone yourself: harmonism.io/lodestone-desktop)";
     // Send nudge but continue processing the current message normally
     sendTelegramMessage($chatId, $nudge);
 }

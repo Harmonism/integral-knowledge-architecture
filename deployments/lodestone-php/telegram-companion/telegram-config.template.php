@@ -47,8 +47,8 @@ define('COMPANION_MODEL', 'claude-opus-5-5');
 define('LLM_PROVIDER', 'openrouter');
 define('LLM_BASE_URL', 'https://openrouter.ai/api/v1');
 define('LLM_API_KEY', 'sk-or-v1-YOUR-OPENROUTER-KEY-HERE');
-define('LLM_MODEL', 'deepseek/deepseek-v4-pro-0813');          // Opus tier (deep replies, learning calls)
-define('LLM_MODEL_FAST', 'deepseek/deepseek-v4.1-flash');      // Haiku tier (classifier, simple replies)
+define('LLM_MODEL', 'deepseek/deepseek-v4.1-flash-1017');      // Opus tier (deep replies, learning calls)
+define('LLM_MODEL_FAST', 'deepseek/deepseek-v4.1-flash-1017'); // Haiku tier (classifier, simple replies)
 define('LLM_MODEL_VISION', 'deepseek/deepseek-v4-flash-vision-exp'); // any turn carrying an image
 define('LLM_REASONING_EFFORT', 'none');                        // '' omits the field if a model rejects 'none'
 define('LLM_PROVIDER_ONLY', []);                               // e.g. ['deepinfra', 'parasail'] to pin hosts

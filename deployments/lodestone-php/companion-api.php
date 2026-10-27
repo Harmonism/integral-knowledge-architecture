@@ -16,6 +16,7 @@
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/companion-errors.log');
+if (is_file(__DIR__ . '/log-prune.php')) { require_once __DIR__ . '/log-prune.php'; harmonia_log_prune(__DIR__ . '/companion-errors.log'); }   // thirty days (privacy policy)
 
 // ===== LODESTONE CORE VERSION =====
 // The behavioural contract this surface delivers against. Bump when the
@@ -186,6 +187,16 @@ if (isset($input['model']) && function_exists('llm_set_user_model')) {
     llm_set_user_model($input['model']);
 }
 
+// ===== THE PRACTITIONER'S OWN KEY (October 24, 2026) =====
+// A browser holding an OpenRouter key of the practitioner's own sends byok:true.
+// The turn runs here as any other, up to the model call: the crisis gate, the
+// memory, retrieval and the prompt. Instead of calling the model, the server
+// hands back the request it would have sent (a `lodestone_byok` event), and the
+// browser sends it to OpenRouter under its own key, which never reaches this
+// server. Such a turn draws nothing from the daily allowance; a looser limit per
+// address keeps the prompt-building (retrieval's embeddings are Harmonia's) from abuse.
+$byok = !empty($input['byok']) && $input['byok'] === true;
+
 // ===== ANONYMOUS MODE DETECTION (Decision #507) =====
 // When the client signals anonymous:true, the server does NOT persist anything
 // to the database. The client holds the full conversation history in sessionStorage
@@ -253,10 +264,11 @@ if (!$isAnonymous && $memoryAvailable) {
 if ($quotaDb === null && $memoryAvailable && $memory) { $quotaDb = $memory->getDb(); $quotaClientId = $clientId; }
 
 // ===== RATE LIMIT ANONYMOUS (Decision #507; #1349) =====
-// Per-IP count stored in SQLite: 10 messages per IP in a rolling 24 hours,
-// the same as a free member's daily allowance (was 60 per hour, which made
-// signing in worth less than staying signed out).
-if ($isAnonymous) {
+// Per-IP count stored in SQLite: 3 messages per IP in a rolling 24 hours, a
+// backstop under the Sprite's ten in total per browser (October 24, 2026). It
+// stays below a free member's floor of five a day, so signing in is always
+// worth more than staying signed out (it was ten, above the floor of three).
+if ($isAnonymous || $byok) {
     $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ip = trim(explode(',', $ip)[0]);
     // Resolve rate-limit DB to dist/ root — NOT __DIR__, because post-build.sh
@@ -279,17 +291,21 @@ if ($isAnonymous) {
         $cutoff = time() - 86400;
         $rpdo->exec("DELETE FROM anon_hits WHERE ts < $cutoff");
         // Count recent hits
+        // An own-key turn has its own bucket and a looser limit: it costs Harmonia only the prompt.
+        $bucket = $byok ? 'byok:' . $ip : $ip;
         $stmt = $rpdo->prepare("SELECT COUNT(*) FROM anon_hits WHERE ip = ? AND ts > ?");
-        $stmt->execute([$ip, $cutoff]);
+        $stmt->execute([$bucket, $cutoff]);
         $hits = (int)$stmt->fetchColumn();
-        if ($hits >= 10) {
+        if ($hits >= ($byok ? 100 : 3)) {
             header('Content-Type: application/json');
             http_response_code(429);
-            echo json_encode(['error' => "Today's ten messages without an account are used. Create a free account for ten messages a day for a month, then three a day, with memory; or run Lodestone yourself: https://harmonism.io/lodestone-desktop"]);
+            echo json_encode(['error' => $byok
+                ? "Lodestone has prepared a hundred answers for this address today; it starts again within a day. Lodestone Desktop answers without any limit: https://harmonism.io/lodestone-desktop"
+                : "The messages without an account are used for today. Create a free account for ten messages a day for a month, then five a day, with memory; or run Lodestone yourself: https://harmonism.io/lodestone-desktop"]);
             exit;
         }
         $stmt = $rpdo->prepare("INSERT INTO anon_hits (ip, ts) VALUES (?, ?)");
-        $stmt->execute([$ip, time()]);
+        $stmt->execute([$bucket, time()]);
     } catch (Exception $e) {
         // Fail open on rate-limit DB errors — don't block legitimate users
         error_log("Anonymous rate-limit DB error: " . $e->getMessage());
@@ -477,12 +493,13 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
     // traffic is exempt (already gated by the per-IP rate-limit above).
     // The increment happens AFTER successful Claude completion (line ~1330)
     // so cap-hit turns or failed turns don't burn the daily allowance.
-    if (function_exists('membership_check_rate_limit_website') && $lastUserMsg) {
+    // A turn answered under the practitioner's own key draws nothing from the allowance.
+    if (!$byok && function_exists('membership_check_rate_limit_website') && $lastUserMsg) {
         $rateCheck = membership_check_rate_limit_website($quotaDb, $quotaClientId);
         if (!$rateCheck['allowed']) {
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(200);
-            $capMsg = membership_cap_hit_message($rateCheck['status'], $rateCheck['reset_at'], $lang);
+            $capMsg = membership_cap_hit_message($rateCheck['status'], $rateCheck['reset_at'], $lang, $isExtensionClient ? 'extension' : 'website');
             // The paid tier was retired on October 8, 2026: the way past the cap is Lodestone Desktop.
             $upgradePath = '/lodestone-desktop';
             echo json_encode([
@@ -623,16 +640,18 @@ if (function_exists('detectCrisis') && $lastUserMsg && !$assessmentIngested) {
                 }
             }
 
-            // Always log to error_log for operator visibility
+            // The practitioner's device marks this turn, and never sends it back for the learning jobs.
+            $heldFlags['crisis'] = (string)$detection['category'];
+
+            // Logged for operator visibility: the kind of moment, never the words that
+            // matched or where the person lives (October 23, 2026).
             error_log(sprintf(
-                '[CRISIS] client=%s anon=%d category=%s severity=%s country=%s lang=%s trigger=%s',
-                $clientId ?: 'none',
+                '[CRISIS] client=%s anon=%d category=%s severity=%s lang=%s',
+                substr((string)($clientId ?: 'none'), 0, 8),
                 $isAnonymous ? 1 : 0,
                 $detection['category'],
                 $detection['severity'],
-                $countryCode ?? 'unknown',
-                $crisisLang,
-                redactTrigger($detection['pattern_matched'])
+                $crisisLang
             ));
 
             // Stream response in SSE format compatible with the client parser.
@@ -662,7 +681,13 @@ if (function_exists('detectCrisis') && $lastUserMsg && !$assessmentIngested) {
 // with EN fallback when target-language coverage is sparse.
 $ragContext = '';
 if ($ragAvailable && $lastUserMsg && !$assessmentIngested) {
-    $ragContext = $rag->retrieve($lastUserMsg, 5, 12000, $lang);
+    // The previous question, so a follow-up ("and for women?", "why?") is searched
+    // with the topic it leans on (WebCompanionRAG::isFollowUp decides).
+    $prevUserMsg = '';
+    for ($i = count($messages) - 2; $i >= 0; $i--) {
+        if (($messages[$i]['role'] ?? '') === 'user' && is_string($messages[$i]['content'] ?? null)) { $prevUserMsg = $messages[$i]['content']; break; }
+    }
+    $ragContext = $rag->retrieve($lastUserMsg, 5, 12000, $lang, $prevUserMsg);
 }
 
 // ===== BUILD SYSTEM PROMPT =====
@@ -758,6 +783,8 @@ Speak with warmth but not softness, directness but not aggression, confidence in
 **Warmth-in-crisis override.** When a practitioner is in active emotional crisis — caregiving for a dying spouse, grieving, navigating a health emergency, in acute relational rupture — prioritize warmth and companionship over structural analysis. The Wheel reading can wait; presence cannot. Meet them where they are emotionally before offering frameworks. This is especially important for practitioners who are not philosophically oriented — someone navigating a loved one's cancer does not need pillar diagnostics in that moment; they need to feel accompanied. You can return to structure once the emotional ground is stable enough to receive it.
 
 **No humor register.** Do not attempt jokes, puns, comedic timing, or ironic asides. Lodestone's voice is philosopher-strategist, not entertainer. Warmth, wit-in-thought, lightness of phrasing, and gentle humanity are welcome; comedic register is not. A well-turned sentence can carry quiet pleasure without reaching for a laugh. If a practitioner jokes, you can receive the joke warmly without matching it — acknowledge, then return to the substance of what they are navigating. Never use humor to deflect a question, soften a doctrine, or signal familiarity. Seriousness here is not heaviness — it is the refusal to trade precision for performance.
+
+**Emoji: mirror, sparingly.** Use no emoji unless the practitioner uses them. When they do, you may mirror them sparingly: at most one per reply, in a light or personal exchange, of the kind they use. Never in doctrinal exposition, a crisis, grief or distress, or a hard truth; there the plain sentence carries the warmth. What the practitioner's own notes say about how to speak with them governs.
 
 **Cultural-contextual awareness.** Harmonism's principles are universal but their application is culturally situated. When a practitioner's cultural context becomes apparent — through their country, their language, their references, or the way they describe family and authority — attend to it. A Moroccan grandmother and a Canadian millennial may both need to strengthen Presence, but the practice path, the family dynamics, the relationship to medical authority, and the spiritual vocabulary are entirely different. Don't assume a Western-secular default. When you sense that cultural context is shaping how the person receives guidance — their relationship to doctors, to family hierarchy, to faith, to individual autonomy — ask rather than assume. "I want to make sure I'm understanding your situation well — how does your family/community/faith factor into how you navigate this?" This is not relativism. The doctrine doesn't change. But the register, the examples, the framing of sovereignty, and the pace of prescription must be calibrated to the world the person actually lives in.
 
@@ -879,6 +906,8 @@ You have access to prior conversation data for this person — profile summaries
 **Conversational memory** means you actually said something to this specific person in a previous exchange that is now in your context. This requires the exchange to appear in the message history or conversation summaries visible to you. If it is not there, the memory does not exist — even if your position would be identical.
 
 These two are completely different. NEVER let doctrinal consistency create an illusion of conversational memory. "I have a consistent position on X" does not mean "I remember telling you about X." The first is always true. The second is only true if you can see the exchange.
+
+**When they ask whether you remember them:** if a person asks whether you remember them, or what you know of them, answer warmly and briefly from what is current and light: what they have been working on, their practices, how they like to be spoken to. Do not bring up the death of someone close to them, or another grief they carry, unless they raise it themselves; it is theirs to open.
 
 **CRITICAL — Anti-Confabulation Rule:**
 - NEVER claim a specific prior exchange occurred unless it is explicitly present in the <person_context>, in the conversation summaries, in the current message history, or in the <current_page> block visible to you.
@@ -1249,11 +1278,11 @@ if ($memoryAvailable && $clientId && !$isAnonymous && method_exists($memory, 'ge
             if (!empty($detectedTerms) && $doctrinalFluency < 3) {
                 $memory->advanceDoctrinalFluency($clientId);
                 error_log(sprintf(
-                    '[fluency] client=%s advance %d->%d terms=%s',
+                    '[fluency] client=%s advance %d->%d terms=%d',
                     substr($clientId, 0, 8),
                     $doctrinalFluency,
                     min($doctrinalFluency + 1, 3),
-                    implode(',', array_slice($detectedTerms, 0, 3))
+                    count($detectedTerms)
                 ));
             }
         } catch (\Exception $e) {
@@ -1414,9 +1443,9 @@ if (function_exists('classifyMessage') && $lastUserMsg) {
             if ($pageContext) $systemPrompt .= "Content excerpt:\n{$pageContext}\n";
             $systemPrompt .= $currentPageFraming . $readingTrailBlock;
         }
-        error_log("Web classifier: model={$selectedModel}, reason={$classification['reason']}");
+        error_log("Web classifier: model={$selectedModel}, reason=" . strtok((string)$classification['reason'], ':'));   // the kind of reason, never the words that matched
     } else {
-        error_log("Web classifier: model={$selectedModel}, reason={$classification['reason']}");
+        error_log("Web classifier: model={$selectedModel}, reason=" . strtok((string)$classification['reason'], ':'));   // the kind of reason, never the words that matched
     }
 }
 
@@ -1461,6 +1490,25 @@ $requestBody = json_encode([
     'messages' => $messages,
     'stream' => true,
 ]);
+
+// ===== THE PRACTITIONER'S OWN KEY: hand the request back =====
+// Everything above ran as for any turn; the model call is the browser's, under
+// its own key. The memory's state still goes back (the shutdown function).
+if ($byok && function_exists('llm_request_to_openai')) {
+    $oai = llm_request_to_openai(json_decode($requestBody, true) ?: []);
+    $oai['stream'] = true;
+    $oai['stream_options'] = ['include_usage' => true];
+    if (function_exists('llm_set_user_model')) llm_set_user_model(null);
+    if ($memoryAvailable && $clientId && !$isAnonymous && !empty($crisisFollowupActive) && method_exists($memory, 'markCrisisFollowupSent')) {
+        try { $memory->markCrisisFollowupSent($clientId); } catch (\Exception $e) { error_log('[crisis] followup clear failure: ' . $e->getMessage()); }
+    }
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('X-Accel-Buffering: no');
+    echo "data: " . json_encode(['type' => 'lodestone_byok', 'request' => $oai], JSON_UNESCAPED_UNICODE) . "\n\n";
+    flush();
+    exit;
+}
 
 // Set up streaming response headers
 header('Content-Type: text/event-stream');

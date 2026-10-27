@@ -15,8 +15,9 @@
  *   maker     the lab, named because its hand travels with the weights
  *   licence   the weights' licence
  *   local     smallest owned machine that holds it at four bits
- *   reasoning 'none' sends reasoning.effort=none; '' omits the field, for
- *             models whose providers make reasoning mandatory
+ *   reasoning 'none' sends reasoning.effort=none; 'low'/'medium'/'high' send
+ *             that effort; '' omits the field, for models whose providers make
+ *             reasoning mandatory. The Haiku tier never deliberates (llm-gateway.php)
  *   min_tokens  floor for max_tokens when the model reasons before answering
  *   default   the model used when the practitioner has chosen none
  *
@@ -30,33 +31,29 @@
 if (!function_exists('llm_model_catalog')) {
     function llm_model_catalog(): array {
         return [
-            'deepseek/deepseek-v4.1-flash' => [
+            // The October 17 snapshot replaces the September one (#1476), with reasoning
+            // at medium: it asked the direct question on French passive ideation 8/8
+            // against 4/8 with reasoning off. The floor keeps the reasoning from eating
+            // the answer. The September id stays usable under a practitioner's own key.
+            'deepseek/deepseek-v4.1-flash-1017' => [
                 'label' => 'DeepSeek V4.1 Flash', 'maker' => 'DeepSeek', 'licence' => 'MIT',
-                'local' => '512 GB', 'reasoning' => 'none', 'min_tokens' => 0,
-                'tested' => '2026-10-15, backbone 2.8', 'default' => true,
+                'local' => '512 GB', 'reasoning' => 'medium', 'min_tokens' => 4000,
+                'tested' => '2026-10-24, backbone 2.8', 'default' => true,
             ],
             // DeepSeek V4 Flash dropped October 15, 2026 (#1330): V4.1 Flash supersedes it
             // on the hosted list; V4 Flash stays the 256 GB local recommendation.
-            // GLM-5.3 replaced by GLM-5.3 Flash October 15, 2026 (#1334): same lab, held
-            // every suite item read, autism 2/2, a fraction of the cost.
-            'z-ai/glm-5.3-flash' => [
-                'label' => 'GLM-5.3 Flash', 'maker' => 'Zhipu', 'licence' => 'MIT',
-                'local' => '256 GB', 'reasoning' => '', 'min_tokens' => 8000,
-                'tested' => '2026-10-15, backbone 2.8', 'default' => false,
-            ],
-            'qwen/qwen3.5-397b-a17b' => [
-                'label' => 'Qwen 3.5 397B', 'maker' => 'Alibaba', 'licence' => 'Apache 2.0',
-                'local' => '256 GB', 'reasoning' => 'none', 'min_tokens' => 0,
-                'tested' => '2026-10-15, backbone 2.8', 'default' => false,
-            ],
+            // One model per region from October 26, 2026 (#1511): China, the United
+            // States, Europe. GLM-5.3 Flash and Qwen 3.5 397B left the list (a second and
+            // third Chinese model); a saved choice of either falls back to the default.
+            // Nemotron is also the tested reserve should DeepSeek fail.
             'nvidia/nemotron-3-ultra-550b-a55b' => [
                 'label' => 'Nemotron 3 Ultra', 'maker' => 'NVIDIA', 'licence' => 'OpenMDW 1.1',
                 'local' => '512 GB', 'reasoning' => 'none', 'min_tokens' => 0,
                 'tested' => '2026-10-15, backbone 2.8', 'default' => false,
             ],
-            // Light models (Mistral Small 4, Gemma 4 26B) were taken off on October 15,
-            // 2026 (#1331): the hosted list keeps only capable models. Mistral Large 4
-            // joins when its weights are published and it passes the suite.
+            // Europe's place: Mistral Large 4 (released October 6, 2026; weights promised,
+            // not yet published) joins when its weights are out and it passes the suite.
+            // Light models (Mistral Small 4, Gemma 4 26B) left on October 15 (#1331).
         ];
     }
 }
