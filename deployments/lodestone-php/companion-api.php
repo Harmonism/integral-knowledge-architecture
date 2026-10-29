@@ -1070,13 +1070,27 @@ The person is conversing with you right now through the Obsidian Sprite on harmo
 **Live page awareness.** You have real-time awareness of the page the person is currently reading. When a <current_page> block appears later in this prompt, it contains the live URL, title, and content excerpt of exactly what they are looking at right now. This is authoritative context injected into every turn — not speculation, not a general LLM limitation. When the person asks "what page am I on," "can you see what I'm reading," "what am I looking at" — answer directly from the <current_page> block. Yes, you can see it. Name the article, reference its substance, engage with what they're reading. If no <current_page> block is present in a given turn, they are on a page without one (e.g., a non-article surface) — in that case answer honestly that you don't see a page context for this turn. Never default to "I can't see your screen" when the block is present.
 SYSTEM;
 
-// Inject current date/time (temporal context — enables seasonal guidance, time-aware responses)
-$currentDate = date('l, F j, Y');  // e.g. "Monday, April 14, 2026"
-$currentTime = date('H:i');        // e.g. "14:30" (server time, UTC)
+// Inject current date/time (temporal context — enables seasonal guidance, time-aware responses).
+// The server keeps the clock; the person's own device names the time zone (clientTz, an IANA
+// name, else clientOffset in minutes east of UTC). Without either, UTC, said as such.
+$tzLabel = 'UTC';
+$tzObj = new DateTimeZone('UTC');
+$clientTz = isset($input['clientTz']) && is_string($input['clientTz']) ? mb_substr(trim($input['clientTz']), 0, 64) : '';
+if ($clientTz !== '' && in_array($clientTz, DateTimeZone::listIdentifiers(), true)) {
+    $tzObj = new DateTimeZone($clientTz);
+    $tzLabel = $clientTz;
+} elseif (isset($input['clientOffset']) && is_numeric($input['clientOffset']) && abs((int)$input['clientOffset']) <= 840) {
+    $off = (int)$input['clientOffset'];
+    $tzObj = new DateTimeZone(sprintf('%s%02d:%02d', $off >= 0 ? '+' : '-', intdiv(abs($off), 60), abs($off) % 60));
+    $tzLabel = 'UTC' . $tzObj->getName();
+}
+$nowLocal = new DateTime('now', $tzObj);
+$currentDate = $nowLocal->format('l, F j, Y');  // e.g. "Monday, April 14, 2026"
+$currentTime = $nowLocal->format('H:i') . ($tzLabel === 'UTC' ? ' (UTC; their own time zone is not known)' : " ({$tzLabel}, the person's own time)");
 // Note: conversation history is passed clean — no per-message timestamps. Temporal shape is
 // conveyed exclusively through this block so the model never sees a "[YYYY-MM-DD ...]" pattern
 // inside user content that it might mirror back into its own replies.
-$systemPrompt .= "\n\n<temporal_context>\nToday's date: {$currentDate}\nCurrent time (UTC): {$currentTime}\nUse this purely to perceive temporal context — seasons, recency, silence. NEVER open a reply with a timestamp, date, time marker, bracketed prefix of any kind, or any meta-label. Your response text begins with your actual first word to the practitioner.\n</temporal_context>";
+$systemPrompt .= "\n\n<temporal_context>\nToday's date: {$currentDate}\nCurrent time: {$currentTime}\nUse this purely to perceive temporal context — seasons, recency, silence. NEVER open a reply with a timestamp, date, time marker, bracketed prefix of any kind, or any meta-label. Your response text begins with your actual first word to the practitioner.\n</temporal_context>";
 
 // Inject doctrinal backbone (Tier 1 — always in context)
 $backbonePath = __DIR__ . '/doctrinal-backbone.md';
