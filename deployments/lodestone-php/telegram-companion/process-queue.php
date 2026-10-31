@@ -169,6 +169,10 @@ if (!defined('TELEGRAM_BOT_TOKEN') || !defined('ANTHROPIC_API_KEY') || !defined(
 
 // ===== INITIALIZE =====
 $memory = new CompanionMemory(__DIR__ . '/companion-data.db');
+// Lodestone on Telegram is closed (Decision #1560): the worker's one new job is
+// carrying a person's memory into the Lodestone app when they ask (/transfer).
+require_once __DIR__ . '/telegram-closed.php';
+$lastTransferCheck = 0;
 
 // Reset any jobs stuck in 'processing' for more than 5 minutes (crashed processor)
 $resetCount = $memory->resetStuckJobs(300);
@@ -249,6 +253,12 @@ while (true) {
         processJob($job, $memory);
         $jobsThisCycle++;
         $totalJobsProcessed++;
+    }
+
+    // Memory carries asked for on the closed bot, looked for every 20 seconds.
+    if (LODESTONE_TELEGRAM_CLOSED && time() - $lastTransferCheck >= 20) {
+        $lastTransferCheck = time();
+        try { telegramRunTransfers($memory->getDb()); } catch (Throwable $e) { error_log('[transfer] ' . $e->getMessage()); }
     }
 
     // Periodic maintenance (every ~60 seconds worth of polls)

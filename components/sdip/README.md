@@ -2,7 +2,7 @@
 
 **Reference implementation** of the Sovereign Doctrinal Inference Protocol — sovereign inference that preserves doctrinal substance.
 
-The reference implementation is **Lode**, Harmonia's AI infrastructure, and the companion it serves, Lodestone. This repository contains the protocol abstraction extracted from Lode so that other traditions can fork the architecture and run with their own doctrinal substance.
+The reference implementation is **Quarry**, Harmonia's AI infrastructure, and the companion it serves, Lodestone. This repository contains the protocol abstraction extracted from Quarry so that other traditions can fork the architecture and run with their own doctrinal substance.
 
 **Status:** v0.1 Draft. Sufficient to ship a conforming implementation; federation, contribution settlement, and remote attestation are deferred to v0.2.
 
@@ -137,7 +137,7 @@ This is a **v0.1 Draft** reference implementation. What that means concretely:
 - CLI surface
 
 **Skeleton (architecture-correct, awaiting production code):**
-- The harness — the protocol-conforming interface is specified; the production code being ported in lives in Lode's PHP harness (telegram-companion/, companion-api.php) and will be ported to Python module-by-module
+- The harness — the protocol-conforming interface is specified; the production code being ported in lives in Quarry's PHP harness (telegram-companion/, companion-api.php) and will be ported to Python module-by-module
 - Retrieval — the production hybrid retrieval (semantic + FTS5 + domain-gated, Decision #283) is in production; the Python port is in progress
 - Memory and calibration — the SQLite schemas match production; the migration path is straightforward
 
@@ -156,7 +156,7 @@ Conformance is not a licence grant. A closed harness is non-conforming by defini
 
 ## Acknowledgments
 
-The protocol abstraction emerged from the operational architecture of Lode, developed by Harmonia. The convergence with the substrate-sovereignty tradition running from Diffie-Hellman through Zimmermann through May through Nakamoto is acknowledged in [The Sovereign Stack](https://harmonism.io/world/frontiers/the-sovereign-stack) and [Cypherpunks and Harmonism](https://harmonism.io/world/dialogue/cypherpunks-and-harmonism). The framing of doctrinal substance as the architectural variable — what makes the protocol tradition-neutral rather than Harmonism-specific — emerged from a May 2026 working session.
+The protocol abstraction emerged from the operational architecture of Quarry, developed by Harmonia. The convergence with the substrate-sovereignty tradition running from Diffie-Hellman through Zimmermann through May through Nakamoto is acknowledged in [The Sovereign Stack](https://harmonism.io/world/frontiers/the-sovereign-stack) and [Cypherpunks and Harmonism](https://harmonism.io/world/dialogue/cypherpunks-and-harmonism). The framing of doctrinal substance as the architectural variable — what makes the protocol tradition-neutral rather than Harmonism-specific — emerged from a May 2026 working session.
 
 ## Contributing
 
@@ -169,6 +169,6 @@ A fork that instantiates a different tradition's SDIP bundle is welcome to live 
 ## See Also
 
 - [SPEC.md](SPEC.md) — the normative specification
-- [Lode Design Document](https://harmonism.io/harmonai) — the reference-implementation rationale (developer audience)
+- [Quarry Design Document](https://harmonism.io/harmonai) — the reference-implementation rationale (developer audience)
 - [Running Lodestone on Your Own Substrate](https://harmonism.io/world/frontiers/running-lodestone-on-your-own-substrate) — practitioner-scale documentation
 - [The Sovereign Stack](https://harmonism.io/world/frontiers/the-sovereign-stack) — context within the broader sovereign-infrastructure landscape

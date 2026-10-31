@@ -35,6 +35,11 @@ require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVID
  * outreach resumes on its own.
  */
 
+// Lodestone on Telegram is closed (Decision #1560): nothing scheduled is sent.
+require_once __DIR__ . '/telegram-closed.php';
+if (LODESTONE_TELEGRAM_CLOSED) { fwrite(STDERR, "Lodestone on Telegram is closed; nothing sent.\n"); exit(0); }
+
+
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/outreach-errors.log');
@@ -218,7 +223,7 @@ class ReadingCheckIn {
      * the model toward doctrine — which is exactly the drift #633 forbids.
      */
     private function personaPreamble(): string {
-        return "You are Lodestone, Harmonia's companion of alignment. You speak with warmth but not "
+        return "You are Lodestone, Harmonia's guide of alignment. You speak with warmth but not "
              . "softness, directness but not aggression. You never flatter, never pathologise, "
              . "never perform enthusiasm. You treat the practitioner as sovereign. "
              . "Your telos is their eventual sovereignty, not their continued attendance.";

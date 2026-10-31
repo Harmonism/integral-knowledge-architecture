@@ -144,7 +144,7 @@ def _default_block_builder(col: CalibrationColumn, value: Any) -> str:
 
     Tradition bundles SHOULD override this with custom block_builders for
     columns where the level needs to translate to specific instructions
-    (e.g., Lode's doctrinal_fluency_level → "Plain English with lived-
+    (e.g., Quarry's doctrinal_fluency_level → "Plain English with lived-
     experience framing" at level 0, "Full vocabulary as shared language" at
     level 3).
     """

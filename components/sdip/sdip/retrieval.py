@@ -1,6 +1,6 @@
 """RAG retrieval — semantic + FTS5 + domain-gated canon injection.
 
-The production retrieval architecture is documented in Lode Design
+The production retrieval architecture is documented in Quarry Design
 Document Decision #283. This module exposes the protocol-conforming
 interface; the production-grade implementation is being ported from the
 PHP harness module-by-module.
@@ -127,7 +127,7 @@ class Retrieval:
     def _chunk(self, body: str) -> list[str]:
         """Simple character-window chunking with overlap.
 
-        Production Lode uses paragraph-aware chunking; v0.1 reference
+        Production Quarry uses paragraph-aware chunking; v0.1 reference
         uses character-window as a conservative baseline.
         """
         if len(body) <= self.chunk_size:

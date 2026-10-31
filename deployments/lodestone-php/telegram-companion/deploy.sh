@@ -55,6 +55,8 @@ trap cleanup EXIT
 # Files to upload
 PHP_FILES=(
     "telegram-bot.php"
+    "telegram-closed.php"
+    "migrate-telegram-to-held.php"
     "telegram-memory.php"
     "telegram-rag.php"
     "process-queue.php"

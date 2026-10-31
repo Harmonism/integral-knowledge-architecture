@@ -37,7 +37,7 @@ if (!function_exists('llm_model_catalog')) {
             // the answer. The September id stays usable under a practitioner's own key.
             'deepseek/deepseek-v4.1-flash-1017' => [
                 'label' => 'DeepSeek V4.1 Flash', 'maker' => 'DeepSeek', 'licence' => 'MIT',
-                'local' => '512 GB', 'reasoning' => 'medium', 'min_tokens' => 4000,
+                'local' => '512 GB', 'reasoning' => 'medium', 'min_tokens' => 16000,
                 'tested' => '2026-10-24, backbone 2.8', 'default' => true,
             ],
             // DeepSeek V4 Flash dropped October 15, 2026 (#1330): V4.1 Flash supersedes it

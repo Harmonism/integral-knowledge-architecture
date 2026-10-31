@@ -16,6 +16,11 @@ require_once __DIR__ . '/llm-gateway.php';  // model provider switch (LLM_PROVID
  * Architecture: Proactive Outreach Architecture.md in vault Digital/
  */
 
+// Lodestone on Telegram is closed (Decision #1560): nothing scheduled is sent.
+require_once __DIR__ . '/telegram-closed.php';
+if (LODESTONE_TELEGRAM_CLOSED) { fwrite(STDERR, "Lodestone on Telegram is closed; nothing sent.\n"); exit(0); }
+
+
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/outreach-errors.log');

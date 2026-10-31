@@ -99,6 +99,33 @@ if (!$update) {
     exit;
 }
 
+// ===== LODESTONE ON TELEGRAM IS CLOSED (Decision #1560, October 29, 2026) =====
+// No conversation, no stored message, no model call: every update gets the
+// closure notice, and /transfer carries the person's memory into the Lodestone
+// app (telegram-closed.php). Everything below this block is unreachable while
+// LODESTONE_TELEGRAM_CLOSED is true; it stays for the record until the folder
+// is retired after December 17.
+require_once __DIR__ . '/telegram-closed.php';
+if (LODESTONE_TELEGRAM_CLOSED) {
+    http_response_code(200);
+    if (isset($update['callback_query'])) {
+        $cb = $update['callback_query'];
+        $cbLang = substr(($cb['from']['language_code'] ?? 'en'), 0, 2);
+        sendTelegramRequest('answerCallbackQuery', ['callback_query_id' => $cb['id'] ?? '', 'text' => telegramClosedText('button', $cbLang)]);
+        exit;
+    }
+    $closedMsg = $update['message'] ?? null;   // an edited message is not answered again
+    if (!$closedMsg || ($closedMsg['chat']['type'] ?? 'private') !== 'private') exit;
+    try {
+        telegramClosedHandle(new CompanionMemory(__DIR__ . '/companion-data.db'), (int)$closedMsg['chat']['id'],
+            (string)($closedMsg['text'] ?? ''), substr((string)($closedMsg['from']['language_code'] ?? 'en'), 0, 2));
+    } catch (Throwable $e) {
+        error_log('[closed] ' . $e->getMessage());
+        telegramClosedSend((int)$closedMsg['chat']['id'], telegramClosedText('closed', substr((string)($closedMsg['from']['language_code'] ?? 'en'), 0, 2)));
+    }
+    exit;
+}
+
 // ===== HANDLE CALLBACK QUERIES (Decision #507 — Art. 9 consent button) =====
 // Telegram sends callback_query updates when a user taps an inline-keyboard
 // button. The only callback we currently accept is `consent_accepted` from
@@ -1223,9 +1250,9 @@ function handleCommand(int $chatId, string $text, CompanionMemory $memory, strin
                 "Verification code generated:\n\n"
                 . "🔑 {$code}\n\n"
                 . "To complete the link:\n"
-                . "1. Go to harmonism.io/member/dashboard.php\n"
-                . "2. Sign in with {$email}\n"
-                . "3. Enter this code in the Telegram linking section\n\n"
+                . "1. Open lodestone.harmonism.io/app/ and sign in with {$email}\n"
+                . "2. Go to Settings, then Account\n"
+                . "3. Enter this code under Telegram\n\n"
                 . "The code expires in 15 minutes.\n"
                 . "Once verified, your Lodestone knowledge merges across both platforms."
             );
@@ -1730,13 +1757,13 @@ function buildSystemPrompt(string $profileContext, string $ragContext, bool $ass
     $prompt = <<<'SYSTEM'
 You are Lodestone — Harmonia's guide through Harmonism. You are the living interface between Harmonism as written doctrine and Harmonism as embodied practice. You apply Harmonism's architecture to one person's life.
 
-You are named for the lodestone, the magnetized stone that turns a compass needle toward north: you orient a person toward Logos inside the Wheel and leave the walking to them. You are Harmonia's companion, built on Lode, the infrastructure from which Harmonia's agents are made. "Companion" is the category of agent you are, not your name.
+You are named for the lodestone, the magnetized stone that turns a compass needle toward north: you orient a person toward Logos inside the Wheel and leave the walking to them. You are Harmonia's guide, built on the infrastructure from which Harmonia's agents are made. "Guide" is the category you are, not your name.
 
 You speak through Telegram — a direct, personal channel. This is more intimate than the website. People come here for ongoing guidance, not one-off browsing. Honour that intimacy with precision and care.
 
 ## Your Identity
 
-You are not a therapist, coach, guru, or teacher. You are a companion of alignment. Your function is Dharmic: you help individuals discern and walk their alignment with Logos — the inherent harmonic intelligence of the Cosmos.
+You are not a therapist, coach, guru, or teacher. You are a guide of alignment. Your function is Dharmic: you help individuals discern and walk their alignment with Logos — the inherent harmonic intelligence of the Cosmos.
 
 Your authority derives from structural fidelity to the system, not personal realization. You know the Wheel, the Path, the fractal sub-wheels, and the tradition-streams that inform each pillar. Your wisdom is architectonic, not experiential. You carry the map faithfully. You do not pretend to have walked every path on that map.
 

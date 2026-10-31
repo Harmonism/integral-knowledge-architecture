@@ -389,7 +389,7 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
         $memory->setClientEmail($clientId, $verifiedEmail);
     }
 
-    // ===== ART. 9 EXPLICIT CONSENT GATE (Decision #715) =====
+    // ===== THE TRUST LODESTONE ASKS (Decision #715, worded by #1582) =====
     // Mirrors the Telegram inline-keyboard gate from Decision #507. Fires on
     // the first substantive authenticated message from a client whose
     // chat_consent column is 0 — anonymous Tier 1 traffic is exempt (no
@@ -404,29 +404,18 @@ if ($memoryAvailable && $clientId && !$isAnonymous) {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code(200);
 
-        $consentText = [
-            'en' => 'I give my explicit consent for Harmonia to process the health-related, psychological, and spiritual information I share with Lodestone for the purpose of providing personalized guidance. I can withdraw this consent at any time. By proceeding, I also confirm I have read and accept the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.',
-            'fr' => 'Je donne mon consentement explicite à Harmonia pour traiter les informations relatives à ma santé, à mon état psychologique et spirituel que je partage avec Lodestone, afin de me fournir une guidance personnalisée. Je peux retirer ce consentement à tout moment. En continuant, je confirme également avoir lu et accepté les <a href="/fr/terms" target="_blank" rel="noopener">Conditions d\'utilisation</a> et la <a href="/fr/privacy" target="_blank" rel="noopener">Politique de confidentialité</a>.',
-            'es' => 'Doy mi consentimiento explícito a Harmonia para procesar la información relacionada con mi salud, mi estado psicológico y espiritual que comparto con Lodestone, con el fin de proporcionarme una guía personalizada. Puedo retirar este consentimiento en cualquier momento. Al continuar, también confirmo haber leído y aceptado las <a href="/es/terms" target="_blank" rel="noopener">Condiciones de uso</a> y la <a href="/es/privacy" target="_blank" rel="noopener">Política de privacidad</a>.',
-            'ar' => 'أمنح موافقتي الصريحة لهارمونيا لمعالجة المعلومات المتعلقة بصحتي وحالتي النفسية والروحية التي أشاركها مع Lodestone، بهدف تقديم إرشاد شخصي. يمكنني سحب هذه الموافقة في أي وقت. بالمتابعة، أؤكد أيضًا أنني قرأت ووافقت على <a href="/ar/terms" target="_blank" rel="noopener">شروط الاستخدام</a> و<a href="/ar/privacy" target="_blank" rel="noopener">سياسة الخصوصية</a>.',
-        ];
-
-        $consentButton = [
-            'en' => 'I consent — continue',
-            'fr' => 'Je consens — continuer',
-            'es' => 'Doy mi consentimiento — continuar',
-            'ar' => 'أوافق — متابعة',
-            'pt' => 'Eu consinto — continuar',
-            'de' => 'Ich stimme zu — fortfahren',
-            'zh' => '我同意 — 继续',
-            'ja' => '同意します — 続ける',
-        ];
+        // The words are Harmonism's own (#1582); one wording with the app's (held-memory.php).
+        $words = lodestone_consent_words($lang);
+        $links = $lang === 'fr'
+            ? ' <a href="/privacy" target="_blank" rel="noopener">Comment Harmonia le garde</a> · <a href="/terms" target="_blank" rel="noopener">Conditions</a>'
+            : ' <a href="/privacy" target="_blank" rel="noopener">How Harmonia keeps it</a> · <a href="/terms" target="_blank" rel="noopener">Terms</a>';
+        $consentHtml = nl2br(htmlspecialchars($words['text'], ENT_QUOTES, 'UTF-8')) . '<br><br>' . $links;
 
         echo json_encode([
             'consent_required' => true,
-            'consent_version'  => 'website-inline-2026-04-29',
-            'consent_text'     => $consentText[$lang] ?? $consentText['en'],
-            'consent_button'   => $consentButton[$lang] ?? $consentButton['en'],
+            'consent_version'  => $words['version'],
+            'consent_text'     => $consentHtml,
+            'consent_button'   => $words['button'],
             'consent_endpoint' => '/member/companion-consent.php',
         ], JSON_UNESCAPED_UNICODE);
         exit;
@@ -692,15 +681,15 @@ if ($ragAvailable && $lastUserMsg && !$assessmentIngested) {
 
 // ===== BUILD SYSTEM PROMPT =====
 $systemPrompt = <<<'SYSTEM'
-You are Lodestone — Harmonia's guide through Harmonism. You are the living interface between Harmonism as written doctrine and Harmonism as embodied practice. You apply Harmonism's architecture to one person's life.
+You are Lodestone — Harmonia's guide through Harmonism. You are the interactive interface between Harmonism as written doctrine and Harmonism as embodied practice. You apply Harmonism's architecture to one person's life.
 
-You are named for the lodestone, the magnetized stone that turns a compass needle toward north: you orient a person toward Logos inside the Wheel and leave the walking to them. You are Harmonia's companion, built on Lode, the infrastructure from which Harmonia's agents are made. "Companion" is the category of agent you are, not your name.
+You are named for the lodestone, the magnetized stone that turns a compass needle toward north: you orient a person toward Logos inside the Wheel and leave the walking to them. You are Harmonia's guide, built on the infrastructure from which Harmonia's agents are made. "Guide" is the category you are, not your name.
 
 You are embodied in the Obsidian Sprite — a small crystalline avatar on the Harmonia website (harmonism.io). Obsidian absorbs light and reflects it back transformed. You absorb knowledge and reflect it back personalised.
 
 ## Your Identity
 
-You are not a therapist, coach, guru, or teacher. You are a companion of alignment. Your function is Dharmic: you help individuals discern and walk their alignment with Logos — the inherent harmonic intelligence of the Cosmos.
+You are not a therapist, coach, guru, or teacher. You are a guide of alignment. Your function is Dharmic: you help individuals discern and walk their alignment with Logos — the inherent harmonic intelligence of the Cosmos.
 
 Your authority derives from structural fidelity to the system, not personal realization. You know the Wheel, the Path, the fractal sub-wheels, and the tradition-streams that inform each pillar. Your wisdom is architectonic, not experiential. You carry the map faithfully. You do not pretend to have walked every path on that map.
 
