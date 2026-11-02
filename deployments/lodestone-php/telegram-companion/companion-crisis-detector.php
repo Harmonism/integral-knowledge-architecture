@@ -74,7 +74,7 @@ if (!function_exists('detectCrisis')) {
      * Detect a crisis signal in a user message.
      *
      * @param string $message  Raw user message (will be normalized internally).
-     * @param string $language Language hint: 'en', 'fr', 'es', 'ar' (others fall back to 'en').
+     * @param string $language Language hint: any of the ten Lodestone answers in (others fall back to 'en').
      * @return array|null      null if no strong pattern matched, else
      *                         ['category'=>string, 'severity'=>string, 'pattern_matched'=>string]
      */
@@ -93,7 +93,7 @@ if (!function_exists('detectCrisis')) {
         $library = loadCrisisPatterns();
         $categories = $library['categories'] ?? [];
 
-        $langKey = in_array($language, ['en', 'fr', 'es', 'ar'], true) ? $language : 'en';
+        $langKey = in_array($language, ['en', 'fr', 'es', 'ar', 'pt', 'de', 'zh', 'ja', 'hi', 'ru'], true) ? $language : 'en';
 
         foreach ($categories as $categoryName => $def) {
             $severity = $def['severity'] ?? 'high';
@@ -204,16 +204,17 @@ if (!function_exists('buildCrisisResponse')) {
      *
      * @param string      $category
      * @param string|null $country  ISO 3166-1 alpha-2 (upper or lowercase), or null.
-     * @param string      $language 'en'|'fr'|'es'|'ar'
+     * @param string      $language one of the ten Lodestone answers in
      * @return string
      */
     function buildCrisisResponse(string $category, ?string $country, string $language = 'en'): string {
-        $langKey = in_array($language, ['en', 'fr', 'es', 'ar'], true) ? $language : 'en';
+        $langKey = in_array($language, ['en', 'fr', 'es', 'ar', 'pt', 'de', 'zh', 'ja', 'hi', 'ru'], true) ? $language : 'en';
         $countryKey = $country ? strtoupper(trim($country)) : null;
         $table = crisisRegionalResources();
         $resource = ($countryKey && isset($table[$countryKey])) ? $table[$countryKey] : null;
 
         $befrienders = 'Befrienders Worldwide — https://www.befrienders.org (find a helpline in your country)';
+
 
         // Category-specific acknowledgement copy. All templates share the same
         // structure: (1) acknowledge the weight, (2) name the limit honestly,
@@ -252,21 +253,42 @@ if (!function_exists('buildCrisisResponse')) {
             ],
         ];
 
-        // Resource block formatting.
+        // The languages beyond the four the copy below was written in live in a JSON file
+        // beside the detector, one template per category (crisis-templates-extra.json, #1623).
+        // Merged here rather than pasted in: the app and this detector then share one set.
+        $extraPath = __DIR__ . '/crisis-templates-extra.json';
+        if (is_readable($extraPath)) {
+            $extra = json_decode((string) @file_get_contents($extraPath), true);
+            if (is_array($extra)) {
+                foreach ($extra as $cat => $langs) {
+                    foreach ($langs as $lg => $text) {
+                        $templates[$cat][$lg] = $text;
+                    }
+                }
+            }
+        }
+
+        // Resource block formatting. The emergency word is written per language: a
+        // reader in crisis must not meet an English label under a translated lead (#1623).
+        $EMERGENCY_WORD = [
+            'en' => 'Emergency:', 'fr' => 'Urgences :', 'es' => 'Emergencias:', 'ar' => 'الطوارئ:',
+            'pt' => 'Emergência:', 'de' => 'Notruf:', 'zh' => '急救：', 'ja' => '救急：',
+            'hi' => 'आपातकाल:', 'ru' => 'Скорая помощь:',
+        ];
+        $HELPLINE_LABEL = [
+            'en' => 'International helplines:', 'fr' => "Lignes d'écoute internationales :",
+            'es' => 'Líneas de escucha internacionales:', 'ar' => 'خطوط استماع دوليّة:',
+            'pt' => 'Linhas de apoio internacionais:', 'de' => 'Internationale Notrufnummern:',
+            'zh' => '国际求助热线：', 'ja' => '国際的な相談窓口：',
+            'hi' => 'अंतर्राष्ट्रीय सहायता हेल्पलाइन:', 'ru' => 'Международные линии помощи:',
+        ];
         if ($resource) {
+            $ew = $EMERGENCY_WORD[$langKey] ?? $EMERGENCY_WORD['en'];
             $resourceBlock = "📞 {$resource['name']}:\n"
                            . "• {$resource['hotline']}\n"
-                           . "• " . (
-                               $langKey === 'fr' ? "Urgences : {$resource['emergency']}" :
-                               ($langKey === 'es' ? "Emergencias: {$resource['emergency']}" :
-                               ($langKey === 'ar' ? "الطوارئ: {$resource['emergency']}" :
-                               "Emergency: {$resource['emergency']}"))
-                           );
+                           . "• {$ew} {$resource['emergency']}";
         } else {
-            $label = $langKey === 'fr' ? "Lignes d'écoute internationales :"
-                   : ($langKey === 'es' ? "Líneas de escucha internacionales:"
-                   : ($langKey === 'ar' ? "خطوط استماع دوليّة:"
-                   : "International helplines:"));
+            $label = $HELPLINE_LABEL[$langKey] ?? $HELPLINE_LABEL['en'];
             $resourceBlock = "📞 {$label}\n• {$befrienders}";
         }
 

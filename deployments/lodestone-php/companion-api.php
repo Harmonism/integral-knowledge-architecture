@@ -269,7 +269,11 @@ if ($quotaDb === null && $memoryAvailable && $memory) { $quotaDb = $memory->getD
 // stays below a free member's floor of five a day, so signing in is always
 // worth more than staying signed out (it was ten, above the floor of three).
 if ($isAnonymous || $byok) {
-    $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    // The connection's own address only (#1631, #1633): LiteSpeed is reached directly, with no
+    // proxy in front, so CF-Connecting-IP and X-Forwarded-For are whatever the client chose to
+    // send, and keying on them let a forged value open a fresh bucket for every turn. If a proxy
+    // is ever put in front, trust its header only when REMOTE_ADDR is in that proxy's range.
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ip = trim(explode(',', $ip)[0]);
     // Resolve rate-limit DB to dist/ root — NOT __DIR__, because post-build.sh
     // copies companion-api.php into every language subdir. A naive __DIR__ path
@@ -301,7 +305,7 @@ if ($isAnonymous || $byok) {
             http_response_code(429);
             echo json_encode(['error' => $byok
                 ? "Lodestone has prepared a hundred answers for this address today; it starts again within a day. Lodestone Desktop answers without any limit: https://harmonism.io/lodestone-desktop"
-                : "The messages without an account are used for today. Create a free account for ten messages a day for a month, then five a day, with memory; or run Lodestone yourself: https://harmonism.io/lodestone-desktop"]);
+                : "The messages without an account are used for today. Create a free account for ten messages a day for a month, then five a day, with memory; or add your own OpenRouter key in the web app, and Lodestone answers under it: https://lodestone.harmonism.io/app/ ; or run Lodestone yourself: https://harmonism.io/lodestone-desktop"]);
             exit;
         }
         $stmt = $rpdo->prepare("INSERT INTO anon_hits (ip, ts) VALUES (?, ?)");
