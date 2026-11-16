@@ -32,4 +32,4 @@ The companion's purpose is to teach practitioners to read and navigate the archi
 
 ## Status
 
-Implementation-grade. SDIP is the reference protocol implementing this pattern (and Pattern VI). The Harmonist instantiation is in production across web, Telegram, and mobile surfaces. See [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md) for the protocol specification and [`README.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/README.md) for adoption guidance.
+Implementation-grade. SDIP is the reference protocol implementing this pattern (and Pattern VI). The Harmonist instantiation is in production across web, Telegram, and mobile surfaces. See [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md) for the protocol specification and [`README.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/README.md) for adoption guidance.

@@ -34,7 +34,7 @@ The two layers compose rather than compete. Build the context-layer architecture
 
 1. Author the doctrinal backbone — the ~3,000–10,000-word document that carries your tradition's complete architectural commitments stated as held. This is the highest-leverage editorial work of the entire architecture.
 2. Index your corpus for hybrid retrieval. SQLite FTS5 + OpenAI-API-compatible embeddings is the production-tested default; alternatives are interchangeable.
-3. Define the per-practitioner memory schema — what does your tradition track? See [`bundles/harmonism/calibrations.yaml`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/bundles/harmonism/calibrations.yaml) for Harmonism's schema as a model.
+3. Define the per-practitioner memory schema — what does your tradition track? See [`bundles/harmonism/calibrations.yaml`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/bundles/harmonism/calibrations.yaml) for Harmonism's schema as a model.
 4. Implement against the SDIP protocol (see [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md)) or fork the reference harness.
 5. Author a conformance test suite — canonical queries with known-correct doctrinal positions — and run it before every deploy.
 
