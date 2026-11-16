@@ -239,7 +239,7 @@ Each pillar unfolds into a sub-wheel of eight spokes — a central spoke and sev
 
 **Wheel of Service** — Centre: Offering. Spokes: Vocation, Value Creation, Leadership, Collaboration, Ethics & Accountability, Systems & Operations, Communication & Influence. *Offering is action given to the whole — what action becomes when it flows from alignment rather than extraction; the English-first form of what the Bhagavad Gita names karma yoga. Dharma operates across all eight pillars; at the Service register it expresses as Offering.*
 
-**Wheel of Relationships** — Centre: Love. Spokes: Couple, Parenting, Family Elders, Friendship, Community, Service to Vulnerable, Relational Communication. *The Crucible: where practice gets tested against reality.*
+**Wheel of Relationships** — Centre: Love. Spokes: Couple, Family & Elders, Parenting, Friendship, Fellowship, Community, Service to the Vulnerable. *The Crucible: where practice gets tested against reality.*
 
 **Wheel of Learning** — Centre: Wisdom. Spokes: Philosophy & Sacred Knowledge, Practical Skills, Healing Arts, Gender & Initiation, Communication & Language, Digital Arts, Science & Systems. *Front-loaded in youth, episodic in maturity.*
 

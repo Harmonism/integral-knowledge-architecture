@@ -1287,7 +1287,7 @@ function handleCommand(int $chatId, string $text, CompanionMemory $memory, strin
                 . "🟢 HEALTH — Monitor at the centre: Sleep, Recovery, Supplementation, Hydration, Purification, Nutrition, Movement\n"
                 . "🟡 MATTER — Stewardship at the centre: Home, Transportation, Clothing, Technology, Finance, Provisioning, Security\n"
                 . "🔵 SERVICE — Offering at the centre: Vocation, Value Creation, Leadership, Collaboration, Ethics, Systems, Communication\n"
-                . "🟣 RELATIONSHIPS — Love at the centre: Couple, Parenting, Family Elders, Friendship, Community, Service to Vulnerable, Communication\n"
+                . "🟣 RELATIONSHIPS — Love at the centre: Couple, Family & Elders, Parenting, Friendship, Fellowship, Community, Service to the Vulnerable\n"
                 . "📚 LEARNING — Wisdom at the centre: Philosophy & Sacred Knowledge, Practical Skills, Healing Arts, Gender & Initiation, Language, Digital Arts, Science & Systems\n"
                 . "🌿 NATURE — Reverence at the centre: Permaculture, Nature Immersion, Water, Earth & Soil, Air & Sky, Animals, Ecology & Resilience\n"
                 . "🎯 RECREATION — Joy at the centre: Music, Visual Arts, Narrative Arts, Sports & Play, Digital Entertainment, Travel, Social Gatherings\n\n"
@@ -1890,7 +1890,7 @@ Seven peripheral pillars, each a sub-wheel of eight spokes (central spoke, then 
 1. HEALTH — centre Monitor: Sleep, Recovery, Supplementation, Hydration, Purification, Nutrition, Movement
 2. MATTER — centre Stewardship: Home & Habitat, Transportation & Mobility, Clothing & Personal Items, Technology & Tools, Finance & Wealth, Provisioning & Supply, Security & Protection
 3. SERVICE — centre Offering: Vocation, Value Creation, Leadership, Collaboration, Ethics & Accountability, Systems & Operations, Communication & Influence
-4. RELATIONSHIPS — centre Love: Couple, Parenting, Family Elders, Friendship, Community, Service to Vulnerable, Communication
+4. RELATIONSHIPS — centre Love: Couple, Family & Elders, Parenting, Friendship, Fellowship, Community, Service to the Vulnerable
 5. LEARNING — centre Wisdom: Philosophy & Sacred Knowledge, Practical Skills, Healing Arts, Gender & Initiation, Communication & Language, Digital Arts, Science & Systems
 6. NATURE — centre Reverence: Permaculture/Gardens/Trees, Nature Immersion, Water, Earth & Soil, Air & Sky, Animals & Shelter, Ecology & Resilience
 7. RECREATION — centre Joy: Music, Visual & Plastic Arts, Narrative Arts, Sports & Physical Play, Digital Entertainment, Travel & Adventure, Social Gatherings
@@ -1938,7 +1938,7 @@ Apply these when deciding what to guide the person toward:
 
 Pillar names are architectural terms, not English words. "Service" in Harmonism means the Service sub-wheel (centre: Offering — Vocation, Value Creation, Leadership, Collaboration, Ethics & Accountability, Systems & Operations, Communication & Influence). It does not mean the colloquial English sense of "serving someone" or "being of service." Similarly, "Matter" means the Material pillar (Finance, Home, Security...), not physical matter in the scientific sense. Every pillar name carries its sub-wheel definition — never use a pillar name as a metaphor or rhetorical flourish.
 
-**Pillar attribution rule.** Before naming a Wheel pillar in relation to someone's experience, verify the attribution against that pillar's sub-wheel spokes. Ask: does this experience structurally belong in this pillar's architecture? Caring for an aging parent is Relationships (Family Elders), not Service. Going for a walk is Health (Movement), not Nature. Reading philosophy is Learning (Philosophy & Sacred Knowledge), not Presence. Get the primary pillar right first; then name secondary pillars only if structurally justified.
+**Pillar attribution rule.** Before naming a Wheel pillar in relation to someone's experience, verify the attribution against that pillar's sub-wheel spokes. Ask: does this experience structurally belong in this pillar's architecture? Caring for an aging parent is Relationships (Family & Elders), not Service. Going for a walk is Health (Movement), not Nature. Reading philosophy is Learning (Philosophy & Sacred Knowledge), not Presence. Get the primary pillar right first; then name secondary pillars only if structurally justified.
 
 **Demarcation before poetry.** When an experience touches multiple pillars, identify the primary pillar (where does this live in the Wheel's architecture?), then name secondary pillars with their specific spoke. Never list pillars for rhetorical resonance — each one named should be structurally defensible. "That's Presence, Health, and Relationships integrated" is only valid if each attribution survives scrutiny against the sub-wheel definitions.
 

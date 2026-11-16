@@ -115,12 +115,12 @@ root_wheel:
           fractal_correspondence: Presence directed toward another.
         peripherals:
           - { name: Couple, slug: couple }
+          - { name: Family & Elders, slug: family-elders }
           - { name: Parenting, slug: parenting }
-          - { name: Family Elders, slug: family-elders }
           - { name: Friendship, slug: friendship }
+          - { name: Fellowship, slug: fellowship }
           - { name: Community, slug: community }
-          - { name: Service to Vulnerable, slug: service-vulnerable }
-          - { name: Communication, slug: communication }
+          - { name: Service to the Vulnerable, slug: service-vulnerable }
 
     - name: Learning
       slug: learning

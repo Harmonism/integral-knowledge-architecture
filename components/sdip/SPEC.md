@@ -1,6 +1,6 @@
 ---
 domain: digital
-tags: [sdip, protocol, specification, inference, sovereignty, quarry, infrastructure]
+tags: [sdip, protocol, specification, inference, sovereignty, ark, infrastructure]
 audience: developer
 status: draft
 protocol_version: 0.1
