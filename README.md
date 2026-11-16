@@ -26,8 +26,8 @@ Each pattern is a problem class plus a solution pattern, validated against the p
 | II | [Centre-Spoke Topology](./patterns/ii-centre-spoke/) | Every choice of centre privileges one domain and subordinates others. | (specification only) |
 | III | [Epistemic Metadata Framework](./patterns/iii-epistemic-metadata/) | Articles in a large vault have different epistemic standings; binary draft/published toggles cannot represent this. | [`classification/`](./components/classification/) |
 | IV | [Content Priority Architecture](./patterns/iv-content-priority/) | Equal investment across domains produces mediocrity everywhere; author-driven investment produces unprincipled asymmetry. | (specification only) |
-| V | [AI Companion as Transmission Architecture](./patterns/v-companion/) | Personalised integral transmission has never scaled beyond the one-to-one relationship. | [`sdip/`](./components/sdip/) |
-| VI | [Three-Tier Context Engineering](./patterns/vi-context-engineering/) | RLHF-trained models hedge stable doctrinal positions structurally, not editorially. | [`sdip/`](./components/sdip/) |
+| V | [AI Companion as Transmission Architecture](./patterns/v-companion/) | Personalised integral transmission has never scaled beyond the one-to-one relationship. | [SDIP](https://github.com/Harmonism/sovereign-doctrinal-inference) (own repository) |
+| VI | [Three-Tier Context Engineering](./patterns/vi-context-engineering/) | RLHF-trained models hedge stable doctrinal positions structurally, not editorially. | [SDIP](https://github.com/Harmonism/sovereign-doctrinal-inference) (own repository) |
 | VII | [Translation Pipeline Architecture](./patterns/vii-translation/) | AI translation silently violates doctrinal terminology; staleness and translation-error are non-overlapping failure modes. | [`translation/`](./components/translation/) |
 | VIII | [QA Sensor Architecture](./patterns/viii-qa-sensors/) | Living knowledge systems accumulate entropy invisibly; automated repair masks failure modes. | [`sensors/`](./components/sensors/) |
 | IX | [Instruction Architecture](./patterns/ix-instruction-architecture/) | AI-mediated knowledge work is amnesiac; operator memory is the weakest link. | [`instruction/`](./components/instruction/) |
@@ -46,9 +46,6 @@ harmonia-architecture/
 ├── NOTICE.md                          # Why there is no licence
 ├── CHANGELOG.md
 │
-├── deployments/                       # Harmonia's own running systems, published for audit
-│   └── lodestone-php/                     # Not a reference implementation — see its README
-│
 ├── patterns/                          # Per-pattern adoption notes
 │   ├── i-fractal-topology/
 │   ├── ii-centre-spoke/
@@ -64,7 +61,6 @@ harmonia-architecture/
 │   └── xiii-content-integration/
 │
 └── components/                        # Reference implementations
-    ├── sdip/                          # Patterns V + VI: Sovereign Doctrinal Inference Protocol
     ├── topology/                      # Pattern I: fractal heptagram builder + validator
     ├── classification/                # Pattern III: 5-axis classification schema + linter
     ├── translation/                   # Pattern VII: dual-validation translation pipeline
@@ -126,5 +122,6 @@ The methodology emerged through the construction of [Harmonism](https://harmonis
 
 - [Harmonism](https://harmonism.io) — the reference instantiation
 - [`METHODOLOGY.md`](./METHODOLOGY.md) — the thirteen patterns at full articulation
-- [`components/sdip/SPEC.md`](./components/sdip/SPEC.md) — the Sovereign Doctrinal Inference Protocol specification (Patterns V + VI)
+- [Sovereign Doctrinal Inference Protocol](https://github.com/Harmonism/sovereign-doctrinal-inference) — Patterns V + VI as a protocol, its specification and conformance suite, now its own repository
+- [Lodestone mirror](https://github.com/Harmonism/lodestone-mirror) — Harmonia's own deployment, published for audit
 - [Doctrinal Fidelity in Aligned AI](https://harmonism.io/the-living-papers/doctrinal-fidelity-in-aligned-ai--a-knowledge-architecture-response-to-the-problem-of-sovereign-transmission) — academic-paper articulation of the context-engineering pattern (Living Paper)

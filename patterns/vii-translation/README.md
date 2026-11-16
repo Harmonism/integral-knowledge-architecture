@@ -32,7 +32,7 @@ Each recovery layer is canonical inside the pipeline itself, not external post-p
 
 ## Adoption Path
 
-1. Define your tradition's glossary as a YAML file. See [`components/translation/schema/glossary.schema.json`](../../components/translation/schema/glossary.schema.json) for the schema, and Harmonism's [`components/sdip/bundles/harmonism/glossary.yaml`](../../components/sdip/bundles/harmonism/glossary.yaml) for a model.
+1. Define your tradition's glossary as a YAML file. See [`components/translation/schema/glossary.schema.json`](../../components/translation/schema/glossary.schema.json) for the schema, and Harmonism's [`bundles/harmonism/glossary.yaml` (SDIP repository)](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/bundles/harmonism/glossary.yaml) for a model.
 2. Mark each term's adoption status (`native` / `tradition-specific` / `untranslatable`) and provide canonical translations for each target language.
 3. Identify your provider mix per language — DeepL where supported, Groq for unsupported languages, Claude for register-sensitive batches.
 4. Implement the dual-validation pipeline. The architecture is documented at [`components/translation/PIPELINE.md`](../../components/translation/PIPELINE.md); the Harmonia reference (~2,000 lines of Python at `i18n/scripts/translate-sync.py` in the Harmonia website repo) is open-source.

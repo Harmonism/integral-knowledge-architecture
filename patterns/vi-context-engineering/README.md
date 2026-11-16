@@ -2,7 +2,7 @@
 
 *The minimum viable context architecture for AI that must embody — not merely describe — a philosophical system. Closes the doctrinal fidelity gap that pure RAG cannot.*
 
-Full treatment: [`METHODOLOGY.md` § VI](../../METHODOLOGY.md). Reference implementation: [`components/sdip/`](../../components/sdip/). Academic articulation: [Doctrinal Fidelity in Aligned AI](https://harmonism.io/the-living-papers/doctrinal-fidelity-in-aligned-ai--a-knowledge-architecture-response-to-the-problem-of-sovereign-transmission) (Living Paper).
+Full treatment: [`METHODOLOGY.md` § VI](../../METHODOLOGY.md). Reference implementation: [`sovereign-doctrinal-inference`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/). Academic articulation: [Doctrinal Fidelity in Aligned AI](https://harmonism.io/the-living-papers/doctrinal-fidelity-in-aligned-ai--a-knowledge-architecture-response-to-the-problem-of-sovereign-transmission) (Living Paper).
 
 ## Problem It Solves
 
@@ -28,16 +28,16 @@ Each tier solves a problem the others cannot. The backbone ensures doctrinal con
 
 The three-tier architecture corrects the model's hand at the prompt; it presumes a model the deployer did not train and cannot retrain. That presumption holds for every closed model and every open-weight model run as released — the weights download, but the alignment posterior is fixed, so the context layer is the only available correction. A *fully-open* model — weights, training corpus, training code, and checkpoints all released (Ai2's OLMo family is the leading instance) — opens a second layer: the posterior itself becomes reachable, and a system with training capacity can shape the model's disposition toward its own doctrine from the data up. This is *substrate-specific alignment*, and it stands to context engineering as authoring stands to editing.
 
-The two layers compose rather than compete. Build the context-layer architecture first — it is substrate-agnostic, travels to any deployer atop any model today, and is what this pattern transfers. Treat substrate-specific alignment on a fully-open model as the trajectory a system grows into as the fully-open ecosystem and its own training capacity mature, not as a prerequisite. The doctrinal articulation of substrate choice as an alignment surface — including the verifiable-confidential and owned-hardware inference regimes — lives in Harmonia's [Inference Sovereignty](https://harmonism.io/world/frontiers/inference-sovereignty). At the protocol layer, [`components/sdip/SPEC.md`](../../components/sdip/SPEC.md) already routes inference through an OpenAI-compatible HTTP endpoint that is local in the canonical case, so the substitution point for either layer is built in.
+The two layers compose rather than compete. Build the context-layer architecture first — it is substrate-agnostic, travels to any deployer atop any model today, and is what this pattern transfers. Treat substrate-specific alignment on a fully-open model as the trajectory a system grows into as the fully-open ecosystem and its own training capacity mature, not as a prerequisite. The doctrinal articulation of substrate choice as an alignment surface — including the verifiable-confidential and owned-hardware inference regimes — lives in Harmonia's [Inference Sovereignty](https://harmonism.io/world/frontiers/inference-sovereignty). At the protocol layer, [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md) already routes inference through an OpenAI-compatible HTTP endpoint that is local in the canonical case, so the substitution point for either layer is built in.
 
 ## Adoption Path
 
 1. Author the doctrinal backbone — the ~3,000–10,000-word document that carries your tradition's complete architectural commitments stated as held. This is the highest-leverage editorial work of the entire architecture.
 2. Index your corpus for hybrid retrieval. SQLite FTS5 + OpenAI-API-compatible embeddings is the production-tested default; alternatives are interchangeable.
-3. Define the per-practitioner memory schema — what does your tradition track? See [`components/sdip/bundles/harmonism/calibrations.yaml`](../../components/sdip/bundles/harmonism/calibrations.yaml) for Harmonism's schema as a model.
-4. Implement against the SDIP protocol (see [`components/sdip/SPEC.md`](../../components/sdip/SPEC.md)) or fork the reference harness.
+3. Define the per-practitioner memory schema — what does your tradition track? See [`bundles/harmonism/calibrations.yaml`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/bundles/harmonism/calibrations.yaml) for Harmonism's schema as a model.
+4. Implement against the SDIP protocol (see [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md)) or fork the reference harness.
 5. Author a conformance test suite — canonical queries with known-correct doctrinal positions — and run it before every deploy.
 
 ## Status
 
-Implementation-grade. The three-tier architecture is in production across Harmonism's web, Telegram, and mobile surfaces since early 2026. The academic articulation lives in the *Doctrinal Fidelity in Aligned AI* Living Paper. The reference implementation is at [`components/sdip/`](../../components/sdip/).
+Implementation-grade. The three-tier architecture is in production across Harmonism's web, Telegram, and mobile surfaces since early 2026. The academic articulation lives in the *Doctrinal Fidelity in Aligned AI* Living Paper. The reference implementation is at [`sovereign-doctrinal-inference`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/).

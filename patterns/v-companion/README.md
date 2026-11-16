@@ -2,7 +2,7 @@
 
 *The AI companion as architectural guide, not chatbot. The first scaled solution to personalised integral knowledge transmission.*
 
-Full treatment: [`METHODOLOGY.md` § V](../../METHODOLOGY.md). Reference implementation: [`components/sdip/`](../../components/sdip/) (the Sovereign Doctrinal Inference Protocol).
+Full treatment: [`METHODOLOGY.md` § V](../../METHODOLOGY.md). Reference implementation: [`sovereign-doctrinal-inference`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/) (the Sovereign Doctrinal Inference Protocol).
 
 ## Problem It Solves
 
@@ -27,9 +27,9 @@ The companion's purpose is to teach practitioners to read and navigate the archi
 1. Articulate the tradition's developmental sequence (Pattern IV's tier order plus the alchemical-or-equivalent ordering principle).
 2. Define the per-practitioner state schema: what does your tradition track across the relationship? Engagement levels per pillar; concerns; strengths; growth edges; resistance flags. This becomes your `calibrations.yaml` (Pattern VI's territory).
 3. Write the doctrinal backbone (Pattern VI's territory).
-4. Implement the harness — either fork [`components/sdip/`](../../components/sdip/) directly, or implement against its protocol (the Sovereign Doctrinal Inference Protocol at [`components/sdip/SPEC.md`](../../components/sdip/SPEC.md)).
+4. Implement the harness — either fork [`sovereign-doctrinal-inference`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/) directly, or implement against its protocol (the Sovereign Doctrinal Inference Protocol at [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md)).
 5. Define the self-liquidating discipline in the system prompt explicitly. Without it, the model's default behavior is engagement-maximisation imported from its training corpus.
 
 ## Status
 
-Implementation-grade. SDIP is the reference protocol implementing this pattern (and Pattern VI). The Harmonist instantiation is in production across web, Telegram, and mobile surfaces. See [`components/sdip/SPEC.md`](../../components/sdip/SPEC.md) for the protocol specification and [`components/sdip/README.md`](../../components/sdip/README.md) for adoption guidance.
+Implementation-grade. SDIP is the reference protocol implementing this pattern (and Pattern VI). The Harmonist instantiation is in production across web, Telegram, and mobile surfaces. See [`SPEC.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/blob/main/SPEC.md) for the protocol specification and [`README.md`](https://github.com/Harmonism/sovereign-doctrinal-inference/tree/main/README.md) for adoption guidance.

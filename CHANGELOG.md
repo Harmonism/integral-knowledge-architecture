@@ -4,6 +4,12 @@ All notable changes to the Integral Knowledge Architecture framework — and the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Methodology and schemas version on date (`YYYY.MM`); component implementations version on semver.
 
+## Unreleased — the split
+
+- **`components/sdip/`** moved to its own repository, [`sovereign-doctrinal-inference`](https://github.com/Harmonism/sovereign-doctrinal-inference), history preserved. SDIP has its own audience (AI builders, liberation researchers, traditions deploying models) distinct from this methodology's (traditions organizing a corpus).
+- **`deployments/lodestone-php/`** moved to its own repository, [`lodestone-mirror`](https://github.com/Harmonism/lodestone-mirror), history preserved. It is Harmonia's deployment, published for audit, and was never part of the methodology.
+- Links in `README.md` and the Pattern V, VI and VII notes repointed.
+
 ## [Unreleased]
 
 ## [0.3.0] — 2026-08-15 — The Licence Exits
